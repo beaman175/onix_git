@@ -5,8 +5,10 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var path = require('path');
-// loading router-level-middleware modules
 
+global.pool = require('./config/dbpool');
+
+// loading router-level-middleware modules
 var index = require('./routes/index');
 var artists = require('./routes/artists');
 var customers = require('./routes/customers');
