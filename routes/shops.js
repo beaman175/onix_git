@@ -54,8 +54,8 @@ router.get('/', function (req, res, next) {
     //샵 사진을 가져온다
     function selectShopPhotos(connection, shop_results, callback) {
         idx=0;
-        async.forEach(shop_results, function(item,cb){
-            var shop_photo_sql = "select from_id,concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+        async.eachSeries(shop_results, function(item,cb){
+            var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                  "from photo_datas pd "+
                                  "where pd.from_type ='샵' and pd.from_id =?";
             connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
@@ -79,15 +79,15 @@ router.get('/', function (req, res, next) {
     //샵소석 아티스트를 select
     function selectShopsInArtist(connection, shop_results, callback) {
         idx=0;
-        async.forEach(shop_results, function(item,cb){
-            var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0), " +
+        async.eachSeries(shop_results, function(item,cb){
+            var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
                                       "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                       "from artist a left join(select id " +
                                                               "from shop) s "+
                                                     "on (a.shop_id = s.id)" +
                                                     "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
                                                               "from jjim_artists "+
-                                                              "group by artist_id)ja "+
+                                                              "group by artist_id) ja "+
                                                     "on (ja.artist_id = a.id) "+
                                                     "left join (select id,from_id,path,photoname,file_type "+
                                                                "from photo_datas "+
@@ -108,6 +108,7 @@ router.get('/', function (req, res, next) {
             if (err) {
                 callback(err);
             } else {
+                connection.release();
                 callback(null,shop_results);
             }
         });
