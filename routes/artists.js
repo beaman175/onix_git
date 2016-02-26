@@ -42,24 +42,22 @@ router.get('/', function (req, res, next) {
                                                    "from jjim_artists "+
                                                    "group by artist_id)ja "+
                                         "on (ja.artist_id = a.id) ";
-
-        var referrals = "order by shop_jjim_counts desc"; // 추천순
-        var finding = "where a.nickname like " + '%'+search+'%';
-
-        artist_sql = (isNull(search)) ? artist_sql : artist_sql + finding;
-        artist_sql = (condition==='추천순') ? artist_sql + referrals : artist_sql;
-
-
-
-
-
-
-
-                          "LIMIT ? OFFSET ?";
-
+        if(search != undefined){
+            var finding = "where a.nickname like " + '"%'+search+'%"';
+            console.log(finding);
+            artist_sql += finding
+            artist_sql += " LIMIT ? OFFSET ?";
+        }else if(condition==='추천순'){
+            var referrals = " order by artist_jjim_counts desc"; // 추천순
+            artist_sql += referrals;
+            artist_sql += " LIMIT ? OFFSET ?";
+        }else if (condition==='할인순') {
+            var referrals = " order by a.discount desc"; // 할인순
+            artist_sql += referrals;
+        }
         var pageArr = [listPerPage, (page - 1) * listPerPage];
 
-        connection.query(artist_sql1, pageArr, function (err, artist_results) {
+        connection.query(artist_sql, pageArr, function (err, artist_results) {
             if (err) {
                 callback(err);
             } else {
@@ -133,9 +131,6 @@ router.get('/', function (req, res, next) {
             }
         });
     }
-
-
-
 
     //JSON 객체 생성
     function resultJSON(artist_results, callback) {

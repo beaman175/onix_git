@@ -38,8 +38,18 @@ router.get('/', function (req, res, next) {
                          "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
                                                 "from jjim_shops "+
                                                 "group by shop_id)js " +
-                         "on (js.shop_id = s.id) "+
-                         "LIMIT ? OFFSET ?" ;
+                         "on (js.shop_id = s.id) ";
+
+        if(search != undefined){
+            var finding = "where a.nickname like " + '"%'+search+'%"';
+            console.log(finding);
+            artist_sql += finding
+            artist_sql += " LIMIT ? OFFSET ?";
+        }else if(condition==='추천순'){
+            var referrals = " order by artist_jjim_counts desc"; // 추천순
+            artist_sql += referrals;
+            artist_sql += " LIMIT ? OFFSET ?";
+        }
 
         var pageArr = [listPerPage, (page-1)*listPerPage];
 
