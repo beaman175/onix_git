@@ -35,15 +35,26 @@ router.get('/', function (req, res, next) {
 
     //아티스트 목록을 select
     function selectArtists(connection, callback) {
-       // var referrals = "order by shop_jjim_counts desc"; // 추천순
-       // var finding = "where s.name = " + search;
 
-        var artist_sql1 = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
+        var artist_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
                                  "a.discount, a.shop_id "+
                           "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                    "from jjim_artists "+
                                                    "group by artist_id)ja "+
-                                        "on (ja.artist_id = a.id) "+
+                                        "on (ja.artist_id = a.id) ";
+
+        var referrals = "order by shop_jjim_counts desc"; // 추천순
+        var finding = "where a.nickname like " + '%'+search+'%';
+
+        artist_sql = (isNull(search)) ? artist_sql : artist_sql + finding;
+        artist_sql = (condition==='추천순') ? artist_sql + referrals : artist_sql;
+
+
+
+
+
+
+
                           "LIMIT ? OFFSET ?";
 
         var pageArr = [listPerPage, (page - 1) * listPerPage];
@@ -58,7 +69,7 @@ router.get('/', function (req, res, next) {
     }
 
     //아티스트 사진을 가져온다
-    function selectArtistsPhotos(connection, artist_results, callback) {
+    function selectArtistsDetail(connection, artist_results, callback) {
         idx = 0;
         async.eachSeries(artist_results, function (item, cb) {
             var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
@@ -70,6 +81,12 @@ router.get('/', function (req, res, next) {
                                                           "from services) sv "+
                                                     "on (sv.artist_id = a.id) " +
                                       "where a.id = ?" ;
+
+            var artist_comments = "select writer, register_date, content, artist_id " +
+                                  "from artist_comments ac "+
+                                  "where ac.artist_id= ? " +
+                                   "limit 10 offset 0";
+
 
             async.series([function (cb2) {
                 connection.query(artist_photo_sql, item.id, function (err, artist_photo_results) {
@@ -86,6 +103,15 @@ router.get('/', function (req, res, next) {
                         cb2(err);
                     } else {
                         artist_results[idx].services = artist_services_results;
+                        cb2(null);
+                    }
+                });
+            }, function (cb2) {
+                connection.query(artist_comments, item.id, function (err, artist_comments_results) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        artist_results[idx].commentsList = artist_comments_results;
                         cb2(null);
                     }
                 });
@@ -107,6 +133,9 @@ router.get('/', function (req, res, next) {
             }
         });
     }
+
+
+
 
     //JSON 객체 생성
     function resultJSON(artist_results, callback) {
@@ -154,7 +183,7 @@ router.get('/', function (req, res, next) {
             }
         });
     }
-    async.waterfall([getConnection, selectArtists, selectArtistsPhotos, resultJSON], function (err, results) {
+    async.waterfall([getConnection, selectArtists, selectArtistsDetail, resultJSON], function (err, results) {
         if (err) {
             next(err);
         } else {

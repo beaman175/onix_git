@@ -51,68 +51,66 @@ router.get('/', function (req, res, next) {
             }
         });
     }
-    //샵 사진을 가져온다
-    function selectShopPhotos(connection, shop_results, callback) {
+    //샵 사진과 소속 아티스트들을 가져온다
+    function selectShopDetails(connection, shop_results, callback) {
         idx=0;
         async.eachSeries(shop_results, function(item,cb){
             var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                  "from photo_datas pd "+
                                  "where pd.from_type ='샵' and pd.from_id =?";
-            connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
-                if (err) {
-                    cb(err);
-                } else {
-                    shop_results[idx].photoURL= shop_photo_results;
-                    idx++;
-                    cb(null);
-                }
-            });
-        },function(err){
-            if (err) {
-                callback(err);
-            } else {
-                callback(null,connection, shop_results);
-            }
-        });
-    }
-
-    //샵소석 아티스트를 select
-    function selectShopsInArtist(connection, shop_results, callback) {
-        idx=0;
-        async.eachSeries(shop_results, function(item,cb){
             var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                      "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+                                             "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                       "from artist a left join(select id " +
                                                               "from shop) s "+
                                                     "on (a.shop_id = s.id)" +
                                                     "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
                                                               "from jjim_artists "+
                                                               "group by artist_id) ja "+
-                                                    "on (ja.artist_id = a.id) "+
+                                                         "on (ja.artist_id = a.id) "+
                                                     "left join (select id,from_id,path,photoname,file_type "+
                                                                "from photo_datas "+
                                                                "where from_type = '아티스트' " +
                                                                "group by from_id) pd "+
                                                     "on (pd.from_id = a.id)" +
-                                      "where s.id = ?";
-            connection.query(shop_in_artist_sql, item.id, function (err, shopInArtistResults) {
+                                                    "where s.id = ?";
+            async.series([function (cb2) {
+                connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        shop_results[idx].photoURL = shop_photo_results;
+                        cb2(null);
+                    }
+                });
+            }, function (cb2) {
+                connection.query(shop_in_artist_sql, item.id, function (err, shopInArtistResults) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        shop_results[idx].attArtists = shopInArtistResults;
+                        cb2(null);
+                    }
+                });
+            }], function (err) {
                 if (err) {
                     cb(err);
                 } else {
-                    shop_results[idx].attArtists = shopInArtistResults;
                     idx++;
                     cb(null);
                 }
             });
-        },function(err){
+
+        }, function (err) {
             if (err) {
                 callback(err);
             } else {
                 connection.release();
-                callback(null,shop_results);
+                callback(null, shop_results);
             }
         });
     }
+
+
     //JSON 객체 생성
     function resultJSON(shop_results, callback) {
         var shopList=[];
@@ -149,7 +147,7 @@ router.get('/', function (req, res, next) {
             }
         });
     }
-    async.waterfall([getConnection, selectshops,selectShopPhotos, selectShopsInArtist, resultJSON], function (err, results) {
+    async.waterfall([getConnection, selectshops,selectShopDetails,  resultJSON], function (err, results) {
         if (err) {
             next(err);
         } else {
