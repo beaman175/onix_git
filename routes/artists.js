@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-
+var async = require('async');
 //2.아티스트 닉네임 설정
 router.put('/me', function (req, res, next) {
     var nickname = req.body.nickname;
@@ -34,69 +34,95 @@ router.get('/', function (req, res, next) {
     }
 
     //아티스트 목록을 select
-    function selectartists(connection, callback) {
-        var referrals = "order by shop_jjim_counts desc"; // 추천순
-        var finding = "where s.name = " + search;
+    function selectArtists(connection, callback) {
+       // var referrals = "order by shop_jjim_counts desc"; // 추천순
+       // var finding = "where s.name = " + search;
 
-        var artist_sql1 = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-            "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
-            "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
-            "from jjim_shops " +
-            "group by shop_id)js " +
-            "on (js.shop_id = s.id) " +
-            "LIMIT ? OFFSET ?";
+        var artist_sql1 = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
+                                 "a.discount, a.shop_id "+
+                          "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
+                                                   "from jjim_artists "+
+                                                   "group by artist_id)ja "+
+                                        "on (ja.artist_id = a.id) "+
+                          "LIMIT ? OFFSET ?";
 
         var pageArr = [listPerPage, (page - 1) * listPerPage];
 
-        connection.query(shop_sql1, pageArr, function (err, shop_results) {
+        connection.query(artist_sql1, pageArr, function (err, artist_results) {
             if (err) {
                 callback(err);
             } else {
-                callback(null, connection, shop_results);
+                callback(null, connection, artist_results);
             }
         });
     }
 
     //아티스트 사진을 가져온다
-    function selectArtistsPhotos(connection, shop_results, callback) {
+    function selectArtistsPhotos(connection, artist_results, callback) {
         idx = 0;
-        async.forEach(shop_results, function (item, cb) {
-            var shop_photo_sql = "select from_id,concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
-                "from photo_datas pd " +
-                "where pd.from_type ='샵' and pd.from_id =?";
-            connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
-                if (err) {
+        async.eachSeries(artist_results, function (item, cb) {
+            var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+                                   "from photo_datas pd " +
+                                   "where pd.from_type ='아티스트' and pd.from_id =?";
+
+            var artsit_services_sql = "select sv.service_type, sv.price "+
+                                      "from artist a join (select service_type, price ,artist_id " +
+                                                          "from services) sv "+
+                                                    "on (sv.artist_id = a.id) " +
+                                      "where a.id = ?" ;
+
+            async.series([function (cb2) {
+                connection.query(artist_photo_sql, item.id, function (err, artist_photo_results) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        artist_results[idx].artistPhotos = artist_photo_results;
+                        cb2(null);
+                    }
+                });
+            }, function (cb2) {
+                connection.query(artsit_services_sql, item.id, function (err, artist_services_results) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        artist_results[idx].services = artist_services_results;
+                        cb2(null);
+                    }
+                });
+            }], function (err) {
+                if(err){
                     cb(err);
-                } else {
-                    shop_results[idx].photoURL = shop_photo_results;
+                }else{
                     idx++;
                     cb(null);
                 }
             });
+
         }, function (err) {
             if (err) {
                 callback(err);
             } else {
-                callback(null, connection, shop_results);
+                connection.release();
+                callback(null, artist_results);
             }
         });
     }
 
     //JSON 객체 생성
-    function resultJSON(shop_results, callback) {
+    function resultJSON(artist_results, callback) {
         var artistList = [];
 
-        async.forEach(shop_results, function (item, cb) {
+        async.forEach(artist_results, function (item, cb) {
             var artist_element = {
                 "artistsList": [{
-                    "artist_id": 1,
-                    "name": "민규짱",
-                    "jjimcount_count": "찜목록 수",
-                    "discount": 20,
+                    "artist_id": item.id,
+                    "name": item.nickname,
+                    "jjimcount_count": item.artist_jjim_counts,
+                    "discount": item.discount,
                     "jjim_status": "보류",
-                    "shop_id": 1,
-                    "artistPhotos": [{"photoURL": "./public/photos/artist/xxxxxx0.jpg"}, {"photoURL": "./public/photos/artist/xxxxx10.jpg"}],
-                    "services": [{"type": "젤네일", "price": 15000}, {"type": "젤페디", "price": 25000}],
+                    "shop_id": item.shop_id,
+                    "artistPhotos": item.artistPhotos,
+                    "services": item.services,
                     "comments": {
                         "commentPage": 1,
                         "listPerPage": 10,
@@ -109,38 +135,32 @@ router.get('/', function (req, res, next) {
                         }]
                     }
                 }]
-
-
             };
-            shopList.push(shop_element);
+            artistList.push(artist_element);
             cb(null);
         }, function (err) {
             if (err) {
                 callback(err);
             } else {
-                var shop_results = {
+                var artist_results = {
                     "successResult": {
-                        "message": "모든 샵이 정상적으로 조회 되었습니다.",
+                        "message": "모든 아티스트들이 정상적으로 조회 되었습니다.",
                         "page": page,
                         "listPerPage": listPerPage,
-                        "shopList": shopList
+                        "artistsList": artistList
                     }
                 };
-                callback(null, shop_results);
+                callback(null, artist_results);
             }
         });
     }
-
-    async.waterfall([getConnection, selectshops, selectShopPhotos, selectShopsInArtist, resultJSON], function (err, results) {
+    async.waterfall([getConnection, selectArtists, selectArtistsPhotos, resultJSON], function (err, results) {
         if (err) {
             next(err);
         } else {
             res.json(results);
         }
     });
-
-
-    res.json(result);
 });
 
 
