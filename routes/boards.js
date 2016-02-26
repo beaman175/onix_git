@@ -30,7 +30,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     //게시글 목록을 select
     function selectBoards(connection, callback) {
 
-        var boards_sql =  "select pbd.id as board_id, pbd.name,p.id, p.writer, p.register_date, p.title, p.content, " +
+        var boards_sql =  "select pbd.id as board_id, pbd.name ,p.id, p.writer, p.register_date, p.title, p.content, " +
                           "concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
                           "from postboard pbd join (select id, postboard_id, writer, register_date, title, content " +
                                                     "from posts) p "+
@@ -114,7 +114,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
                         "message": "해당 게시물들이 정상적으로 조회 되었습니다.",
                         "page": page,
                         "listPerPage": listPerPage,
-//                        "boardName" : board_results[0].pbd.name,
+                        "boardName" : board_results[0].name,
                         "postList": postList
                     }
                 };
