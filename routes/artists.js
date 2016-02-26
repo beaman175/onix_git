@@ -45,7 +45,7 @@ router.get('/', function (req, res, next) {
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
             console.log(finding);
-            artist_sql += finding
+            artist_sql += finding;
             artist_sql += " LIMIT ? OFFSET ?";
         }else if(condition==='추천순'){
             var referrals = " order by artist_jjim_counts desc"; // 추천순
@@ -55,6 +55,8 @@ router.get('/', function (req, res, next) {
             var referrals = " order by a.discount desc"; // 할인순
             artist_sql += referrals;
         }
+        artist_sql += " LIMIT ? OFFSET ?";
+
         var pageArr = [listPerPage, (page - 1) * listPerPage];
 
         connection.query(artist_sql, pageArr, function (err, artist_results) {
@@ -66,7 +68,7 @@ router.get('/', function (req, res, next) {
         });
     }
 
-    //아티스트 사진을 가져온다
+    //아티스트 사진, 서비스, 댓글들을 가져온다
     function selectArtistsDetail(connection, artist_results, callback) {
         idx = 0;
         async.eachSeries(artist_results, function (item, cb) {
@@ -109,7 +111,7 @@ router.get('/', function (req, res, next) {
                     if (err) {
                         cb2(err);
                     } else {
-                        artist_results[idx].commentsList = artist_comments_results;
+                        artist_results[idx].comments = artist_comments_results;
                         cb2(null);
                     }
                 });
@@ -136,7 +138,7 @@ router.get('/', function (req, res, next) {
     function resultJSON(artist_results, callback) {
         var artistList = [];
 
-        async.forEach(artist_results, function (item, cb) {
+        async.eachSeries(artist_results, function (item, cb) {
             var artist_element = {
                 "artistsList": [{
                     "artist_id": item.id,
@@ -147,17 +149,7 @@ router.get('/', function (req, res, next) {
                     "shop_id": item.shop_id,
                     "artistPhotos": item.artistPhotos,
                     "services": item.services,
-                    "comments": {
-                        "commentPage": 1,
-                        "listPerPage": 10,
-                        "commentsList": [{
-                            "date": "2015-01-12 14:00", "writer": "abcd@example.onix.com",
-                            "content": "너무 잘해주세요~"
-                        }, {
-                            "date": "2015-01-12 16:00", "writer": " dhy123@example.onix.com",
-                            "content": "친절하세요~"
-                        }]
-                    }
+                    "comments": item.comments
                 }]
             };
             artistList.push(artist_element);
@@ -204,8 +196,7 @@ router.get('/:artist_id/details', function (req, res, next) {
             "artistPhotos": [{"photoURL": "./public/photos/artist/xxxxxx3.jpg"}, {"photoURL": "./public/photos/artist/xxxxxx8.jpg"}],
             "services": [{"type": "젤네일", "price": 10000}, {"type": "젤페디", "price": 20000}],
             "comments": {
-                "commentPage": 1,
-                "listPerPage": 10,
+
                 "commentsList": [{
                     "date": "2016-01-12 14:00", "writer": "abcd@example.onix.com",
                     "content": "너무 잘해주세요~"

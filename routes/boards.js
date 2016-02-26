@@ -1,39 +1,137 @@
 var express = require('express');
 var router = express.Router();
+var async = require('async');
 
 // 16.게시판 조회
 router.get('/:postBoard_id/posts', function (req, res, next) {
-    var postBoard_id = req.params.postBoard_id;
+
+    var idx = 0; //인덱스
+    var listPerPage = 10;
+
+    var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
+    postBoard_id = (postBoard_id>3 || postBoard_id<0) ? 1: postBoard_id
+
+
     var page = req.query.page;
+    page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
+
     var search = req.query.search;
-    var condition = req.query.condition;
-//hgjhgjhsadasdas
-    var result = {
-        "successResult": {
-            "message": "게시판의 글들을 조회 하였습니다",
-            "page": 1,
-            "listPerPage": 10,
-            "postList": [
-                {
-                    "post_id": "1",
-                    "writer": "고객네일환영",
-                    "date": "2015-01-30 13:23",
-                    "title": "팁드립니다",
-                    "content": "지울때 XXX 을 쓰면 깔끔해요",
-                    "photo": "./public/photos/board/xxxxxx0.jpg",
-                    "replies": {
-                        "repliesPage": 1,
-                        "listPerPage": 10,
-                        "repiesList": [
-                            {"date": "2015-01-30 13:33", "writer": "abcd@onix.example.com", "content": "정말요??"},
-                            {"date": "2015-01-30 13:35", "writer": "xte@onix.example.com", "content": "대단합니다~!ㅋㅋ"}
-                        ]
-                    }
-                }
-            ]
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+
+    //게시글 목록을 select
+    function selectBoards(connection, callback) {
+
+        var boards_sql =  "select pbd.id as board_id, pbd.name,p.id, p.writer, p.register_date, p.title, p.content, " +
+                          "concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+                          "from postboard pbd join (select id, postboard_id, writer, register_date, title, content " +
+                                                    "from posts) p "+
+                                             "on (p.postboard_id = pbd.id) " +
+                                             "join (select from_id, path, photoname, file_type " +
+                                                    "from photo_datas " +
+                                                    "where from_type ='게시판') pd "+
+                                             "on (p.id = pd.from_id) "+
+                          "where pbd.id = ?";
+
+        if(search != undefined){
+            var finding = "where p.title like " + '"%'+search+'%"';
+            console.log(finding);
+            boards_sql += finding;
+            boards_sql += " LIMIT ? OFFSET ?";
+        }else{
+            boards_sql += " LIMIT ? OFFSET ?";
         }
-    };
-    res.json(result);
+        var pageArr = [postBoard_id, listPerPage, (page - 1) * listPerPage];
+
+        connection.query(boards_sql, pageArr, function (err, board_results) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection, board_results);
+            }
+        });
+    }
+
+    //댓글을 불러온다
+    function selectBoardsReplies(connection, board_results, callback) {
+        idx = 0;
+        async.eachSeries(board_results, function (item, cb) {
+            var boards_comments = "select writer, register_date, content " +
+                                  "from reply  " +
+                                  "where posts_id = ?  " +
+                                  "limit 10 offset 0";
+
+            connection.query(boards_comments, item.id, function (err, board_replies_results) {
+                if (err) {
+                    cb(err);
+                } else {
+                    board_results[idx].replies = board_replies_results;
+                    idx++;
+                    cb(null);
+                }
+            });
+        },function (err) {
+            if (err) {
+                callback(err);
+            } else {
+                connection.release();
+                callback(null, board_results);
+            }
+        });
+    }
+
+
+
+    //JSON 객체 생성
+    function resultJSON(board_results, callback) {
+        var postList = [];
+        async.eachSeries(board_results, function (item, cb) {
+            var post_element = {
+                        "post_id" :item.id,
+                        "writer": item.writer,
+                        "date": item.register_date,
+                        "title": item.title,
+                        "content": item.content,
+                        "photo": item.photoURL,
+                        "replies": item.replies
+            };
+            postList.push(post_element);
+            cb(null);
+        }, function (err) {
+            if (err) {
+                callback(err);
+            } else {
+                var results = {
+                    "successResult": {
+                        "message": "해당 게시물들이 정상적으로 조회 되었습니다.",
+                        "page": page,
+                        "listPerPage": listPerPage,
+//                        "boardName" : board_results[0].pbd.name,
+                        "postList": postList
+                    }
+                };
+                callback(null, results);
+            }
+        });
+    }
+
+    async.waterfall([getConnection, selectBoards, selectBoardsReplies, resultJSON], function (err, results) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(results);
+        }
+    });
+
+
 });
 // 17. 게시판 내 댓글 더보기
 router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
