@@ -179,6 +179,15 @@ router.get('/', function (req, res, next) {
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
 
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
 
@@ -194,21 +203,28 @@ router.get('/:shop_id', function (req, res, next) {
                                   "from photo_datas pd " +
                                   "where pd.from_type ='샵' and pd.from_id =?";
 
-        var shop_pick_artists_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                           "a.discount, a.shop_id " +
-                                    "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts " +
-                                                             "from jjim_artists " +
-                                                             "group by artist_id)ja " +
-                                                       "on (ja.artist_id = a.id) " +
-                                    "where shop_id=? ";
+        var shop_pick_artists_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
+                                            "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+                                     "from artist a left join(select id " +
+                                                             "from shop) s "+
+                                                    "on (a.shop_id = s.id)" +
+                                                   "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
+                                                             "from jjim_artists "+
+                                                             "group by artist_id) ja "+
+                                                   "on (ja.artist_id = a.id) "+
+                                                   "left join (select id,from_id,path,photoname,file_type "+
+                                                              "from photo_datas "+
+                                                              "where from_type = '아티스트' " +
+                                                              "group by from_id) pd "+
+                                                   "on (pd.from_id = a.id)" +
+                                     "where s.id = ?";
 
         async.waterfall([function (cb) {
-            connection.query(shop_pick_sql, shop_id, function (err, shopPickResults) {
+            connection.query(shop_pick_sql, [shop_id,shop_id], function (err, shopPickResults) {
                 if (err) {
                     cb(err);
                 } else {
-
-                    cb(null);
+                    cb(null,shopPickResults);
                 }
             });
         }, function (shop_pick_results, cb) {
@@ -221,84 +237,47 @@ router.get('/:shop_id', function (req, res, next) {
                 }
             });
         }, function (shop_pick_results, cb) {
-            connection.query(shop_pick_photo_sql, shop_id, function (err, shopInArtistResults) {
+            connection.query(shop_pick_artists_sql, shop_id, function (err, shopInArtistResults) {
                 if (err) {
                     cb(err);
                 } else {
                     shop_pick_results.attArtists = shopInArtistResults;
-                    cb(null);
+                    cb(null,shop_pick_results);
                 }
             });
-        }], function (err) {
+        }], function (err, shop_pick_results) {
             if (err) {
                 callback(err);
             } else {
-                callback(null,shop_pick_results);
+                callback(null, shop_pick_results);
             }
         });
     }
     //JSON 객체 생성
-    function resultJSON(shop_results, callback) {
-        var shopList=[];
-
-        async.forEach(shop_results, function(item, cb){
-            var shop_element= {
-                "shop_id": item.id,
-                "name": item.name,
-                "address": item.address,
-                "shop_jjim_counts": item.shop_jjim_counts,
+    function resultJSON(shop_pick_results, callback) {
+        var result = {
+            "successResult": {
+                "message": "해당 샵에 정보가 조회되었습니다.",
+                "name": shop_pick_results[0].name,
+                "address": shop_pick_results[0].address,
+                "jjim_counts": shop_pick_results[0].shop_jjim_counts,
                 "jjim_status": "보류",
-                "longitude": item.longitude,
-                "latitude": item.latitude,
-                "callnumber": item.callnumber,
-                "usetime": item.usetime,
-                "photoURL" : item.photoURL,
-                "attArtists" : item.attArtists
-            };
-            shopList.push(shop_element);
-            cb(null);
-        }, function(err) {
-            if (err) {
-                callback(err);
-            } else {
-                var shop_results = {
-                    "successResult": {
-                        "message": "모든 샵이 정상적으로 조회 되었습니다.",
-                        "page": page,
-                        "listPerPage": listPerPage,
-                        "shopList": shopList
-                    }
-                };
-                callback(null, shop_results);
+                "longitude": shop_pick_results[0].longitude,
+                "latitude": shop_pick_results[0].latitude,
+                "callnumber": shop_pick_results[0].callnumber,
+                "usetime": shop_pick_results[0].usetime,
+                "shopPhotos": shop_pick_results.photoURL ,
+                "attArtists": shop_pick_results.attArtists
             }
-        });
+        };
+        callback(null, result);
     }
-    var result = {
-        "successResult": {
-            "message": "해당 샵에 정보가 조회되었습니다.",
-            "name": "오닉스루비샵",
-            "address": "서울시 강서구 화곡3동...",
-            "jjim_counts": "총 찜목록 수",
-            "jjim_status": "찜상태",
-            "longitude": 23.1232,
-            "latitude": 23.1231,
-            "calnumber": "010-xxxx-xxxx",
-            "usetime": "오전 12시 ~ 오후 9시",
-            "intro": "언제든지 환영합니다",
-            "shopPhotos": [{"photoURL": "./public/photos/shop/xxxxx11.jpg"}, {"photoURL": "./public/photos/shop/xxxxx17.jpg"}],
-            "attArtists": [{
-                "artist_id": "4",
-                "artist_nickname": "네일이얌",
-                "artistPhoto": "대표사진 url 경로",
-                "jjim_counts": "아티스트 총 찜 횟수"
-            }, {
-                "artist_id": "6",
-                "artist_nickname": "민규짱",
-                "artistPhoto": "대표사진 url 경로",
-                "jjim_counts": "아티스트 총 찜 횟수"
-            }]
+    async.waterfall([getConnection, selectPickShopDetails,  resultJSON], function (err, result) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(result);
         }
-    };
-    res.json(result);
+    });
 });
 module.exports = router;
