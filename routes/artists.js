@@ -113,16 +113,13 @@ router.get('/', function (req, res, next) {
                           "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                    "from jjim_artists "+
                                                    "group by artist_id)ja "+
-                                        "on (ja.artist_id = a.id) ";
+                                         "on (ja.artist_id = a.id) ";
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
-            console.log(finding);
             artist_sql += finding;
-            artist_sql += " LIMIT ? OFFSET ?";
         }else if(condition==='추천순'){
             var referrals = " order by artist_jjim_counts desc"; // 추천순
             artist_sql += referrals;
-            artist_sql += " LIMIT ? OFFSET ?";
         }else if (condition==='할인순') {
             var referrals = " order by a.discount desc"; // 할인순
             artist_sql += referrals;

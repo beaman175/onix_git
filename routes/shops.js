@@ -42,17 +42,13 @@ router.get('/', function (req, res, next) {
 
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
-            console.log(finding);
             shop_sql += finding
-            shop_sql += " LIMIT ? OFFSET ?";
-        }else if(condition==='추천순'){
+        }else if(condition==='추천순') {
             var referrals = " order by artist_jjim_counts desc"; // 추천순
             shop_sql += referrals;
-            shop_sql += " LIMIT ? OFFSET ?";
-        }else{
-            shop_sql += " LIMIT ? OFFSET ?";
-
         }
+        shop_sql += " LIMIT ? OFFSET ?";
+
 
         var pageArr = [listPerPage, (page-1)*listPerPage];
 
