@@ -249,7 +249,6 @@ router.get('/', function (req, res, next) {
     });
 });
 
-
 // 13.아티스트 상세조회
 router.get('/:artist_id', function (req, res, next) {
     var artist_id = parseInt(req.params.artist_id);
@@ -357,9 +356,6 @@ router.get('/:artist_id', function (req, res, next) {
     });
 });
 
-
-
-
 // 14.한줄평 더보기
 router.get('/:artist_id/comments', function (req, res, next) {
     var artist_id = parseInt(req.params.artist_id);
@@ -415,7 +411,6 @@ router.get('/:artist_id/comments', function (req, res, next) {
     });
 });
 
-
 // 15.아티스트 한줄평 쓰기
 router.post('/:artist_id/comments', function (req, res, next) {
     var artist_id = req.params.artist_id;
@@ -427,4 +422,6 @@ router.post('/:artist_id/comments', function (req, res, next) {
     };
     res.json(result);
 });
+
+
 module.exports = router;
