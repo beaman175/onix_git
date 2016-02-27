@@ -109,7 +109,7 @@ router.get('/', function (req, res, next) {
     function selectArtists(connection, callback) {
 
         var artist_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
-                                 "a.discount, a.shop_id "+
+                                 "a.discount, intro, a.shop_id "+
                           "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                    "from jjim_artists "+
                                                    "group by artist_id)ja "+
@@ -215,8 +215,9 @@ router.get('/', function (req, res, next) {
                 "artistsList": [{
                     "artist_id": item.id,
                     "name": item.nickname,
-                    "jjimcount_count": item.artist_jjim_counts,
+                    "artist_jjim_counts": item.artist_jjim_counts,
                     "discount": item.discount,
+                    "intro" : item.intro,
                     "jjim_status": "보류",
                     "shop_id": item.shop_id,
                     "artistPhotos": item.artistPhotos,
@@ -254,33 +255,113 @@ router.get('/', function (req, res, next) {
 
 // 13.아티스트 상세조회
 router.get('/:artist_id', function (req, res, next) {
-    var artist_id = req.params.artist_id;
+    var artist_id = parseInt(req.params.artist_id);
 
-    var result = {
-        "successResult": {
-            "message": "해당 아티스트 페이지 입니다",
-            "artist_id": 2,
-            "name": "네일이염",
-            "jjimcount_count": "찜목록 수",
-            "discount": 20,
-            "jjim_status": "찜상태",
-            "shop_id": 1,
-            "artistPhotos": [{"photoURL": "./public/photos/artist/xxxxxx3.jpg"}, {"photoURL": "./public/photos/artist/xxxxxx8.jpg"}],
-            "services": [{"type": "젤네일", "price": 10000}, {"type": "젤페디", "price": 20000}],
-            "comments": {
-
-                "commentsList": [{
-                    "date": "2016-01-12 14:00", "writer": "abcd@example.onix.com",
-                    "content": "너무 잘해주세요~"
-                }, {
-                    "date": "2016-01-12 16:00", "writer": " dhy123@example.onix.com",
-                    "content": "친절하세요~"
-                }]
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
             }
+        });
+    }
+
+    function selectArtistsDetail(connection, callback) {
+        var artist_pick_sql = "select id, nickname, discount,intro, shop_id "+
+                              "from artist "+
+                              "where id=?";
+
+        var artist_pick_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+                                    "from photo_datas pd " +
+                                    "where pd.from_type ='아티스트' and pd.from_id =?";
+
+        var artsit_pick_services_sql = "select sv.service_type, sv.price "+
+                                       "from artist a join (select service_type, price ,artist_id " +
+                                                           "from services) sv "+
+                                                     "on (sv.artist_id = a.id) " +
+                                       "where a.id = ?" ;
+
+        var artist_pick_comments = "select writer, register_date, content " +
+                                   "from artist_comments ac "+
+                                   "where ac.artist_id= ? " +
+                                   "limit 10 offset 0";
+
+
+        async.waterfall([function (cb) {
+            connection.query(artist_pick_sql, artist_id, function (err, artist_pick_results) {
+                if (err) {
+                    cb(err);
+                } else {
+                    cb(null,artist_pick_results);
+                }
+            });
+        }, function (artist_pick_results,cb) {
+            connection.query(artist_pick_photo_sql, artist_id, function (err, artist_photo_results) {
+                if (err) {
+                    cb(err);
+                } else {
+                    artist_pick_results.artistPhotos = artist_photo_results;
+                    cb(null,artist_pick_results);
+                }
+            });
+        }, function (artist_pick_results,cb) {
+            connection.query(artsit_pick_services_sql, artist_id, function (err, artist_services_results) {
+                if (err) {
+                    cb(err);
+                } else {
+                    artist_pick_results.services = artist_services_results;
+                    cb(null,artist_pick_results);
+                }
+            });
+        }, function (artist_pick_results,cb) {
+            connection.query(artist_pick_comments,artist_id, function (err, artist_comments_results) {
+                if (err) {
+                    cb2(err);
+                } else {
+                    artist_pick_results.comments = artist_comments_results;
+                    cb(null, artist_pick_results);
+                }
+            });
+        }], function (err,artist_pick_results) {
+            if (err) {
+                callback(err);
+            } else {
+                connection.release();
+                callback(null, artist_pick_results);
+            }
+        });
+    }
+
+    //JSON 객체 생성
+    function resultJSON(artist_pick_results, callback) {
+        var result = {
+            "successResult": {
+                "message": "해당 아티스트 페이지 입니다",
+                "artist_id": artist_pick_results[0].id,
+                "nickname": artist_pick_results[0].nickname,
+                "discount": artist_pick_results[0].discount,
+                "intro": artist_pick_results[0].intro,
+                "jjim_status": "보류",
+                "shop_id": artist_pick_results[0].shop_id,
+                "artistPhotos": artist_pick_results.artistPhotos,
+                "services": artist_pick_results.services,
+                "comments": artist_pick_results.comments
+            }
+        };
+        callback(null,result);
+    }
+    async.waterfall([getConnection, selectArtistsDetail, resultJSON], function (err, results) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(results);
         }
-    };
-    res.json(result);
+    });
 });
+
+
+
 
 // 14.한줄평 더보기
 router.get('/:artist_id/comments', function (req, res, next) {
