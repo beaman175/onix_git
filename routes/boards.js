@@ -88,8 +88,6 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
         });
     }
 
-
-
     //JSON 객체 생성
     function resultJSON(board_results, callback) {
         var postList = [];
@@ -133,23 +131,62 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
 
 });
+
 // 17. 게시판 내 댓글 더보기
 router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
-    var postBoard_id = req.params.postBoard_id; //1(QnA), 2(커뮤니티), 3(공지사항)
-    var post_id = req.params.post_id; // 해당 게시판 글 id
-    var repliespage = req.query.repliespage;
+    var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
+    var post_id = parseInt(req.params.post_id);// 해당 게시판 글 id
+    var repliespage = parseInt(req.query.repliespage);
+    var listPerPage = 10;
 
-    var result = {
-        "successResult": {
-            "message": "댓글들을 추가로 불러왔습니다.",
-            "repliespage": repliespage, //2페이지 이상
-            "listPerPage": 10,
-            "replies": [{"date": "2015-01-30 13:33", "writer": "abcd@onix.example.com", "content": "정말요??"},
-                {"date": "2015-01-30 13:35", "writer": "xte@onix.example.com", "content": "대단합니다~!ㅋㅋ"}
-            ]
+    repliespage = isNaN(repliespage) ? 2 : repliespage; //타입검사 NaN은 타입을 비교 불가
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+
+    function selectBoardReplies(connection, callback){
+        var boardRepliessql = "select r.writer, r.register_date, r.content " +
+                              "from reply r join postboard pb on (pb.id = r.posts_id) " +
+                              "where r.posts_id= ?  and pb.id = ? " +
+                              "limit ? offset ?";
+
+        var pageArr = [post_id, postBoard_id, listPerPage, (repliespage - 1) * listPerPage];
+
+        connection.query(boardRepliessql, pageArr, function (err, boardRepliesResult){
+            connection.release();
+            if(err){
+                callback(err);
+            }else{
+                callback(null, boardRepliesResult);
+            }
+        });
+    }
+
+    function resultJSON(boardRepliesResult, callback) {
+        var results = {
+            "successResult": {
+                "message": "댓글들을 추가로 불러왔습니다.",
+                "repliespage": repliespage, //2페이지 이상
+                "listPerPage": 10,
+                "replies": boardRepliesResult
+            }
+        };
+        callback(null, results);
+    }
+    async.waterfall([getConnection, selectBoardReplies, resultJSON], function (err, results) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(results);
         }
-    };
-    res.json(result);
+    });
 });
 
 // 18. 게시판  글 쓰기
