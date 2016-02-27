@@ -176,9 +176,103 @@ router.get('/', function (req, res, next) {
 
 
 //11.샵 상세 조회
-router.get('/:shop_id/details', function (req, res, next) {
-    var shop_id = req.params.shop_id;
+router.get('/:shop_id', function (req, res, next) {
+    var shop_id = parseInt(req.params.shop_id);
 
+    //해당 샵 목록을 select
+    function selectPickShopDetails(connection, callback) {
+
+        var shop_pick_sql = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
+                                   "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
+                            "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
+                                                   "from jjim_shops " +
+                                                   "where shop_id = ? )js " +
+                                             "on (js.shop_id = s.id) " +
+                            "where shop_id=?";
+
+        var shop_pick_photo_sql = "select from_id,concat(pd.path,'/',pd.photoname,file_type) as phtoURL " +
+                                  "from photo_datas pd " +
+                                  "where pd.from_type ='샵' and pd.from_id =?";
+
+        var shop_pick_artists_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
+                                           "a.discount, a.shop_id " +
+                                    "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts " +
+                                                             "from jjim_artists " +
+                                                             "group by artist_id)ja " +
+                                                       "on (ja.artist_id = a.id) " +
+                                    "where shop_id=? ";
+
+        async.waterfall([function (cb) {
+            connection.query(shop_pick_sql, shop_id, function (err, shopPickResults) {
+                if (err) {
+                    cb(err);
+                } else {
+
+                    cb(null);
+                }
+            });
+        }, function (shop_pick_results, cb) {
+            connection.query(shop_pick_photo_sql, shop_id, function (err, shopPhotoResults) {
+                if (err) {
+                    cb(err);
+                } else {
+                    shop_pick_results.photoURL = shopPhotoResults;
+                    cb(null, shop_pick_results);
+                }
+            });
+        }, function (shop_pick_results, cb) {
+            connection.query(shop_pick_photo_sql, shop_id, function (err, shopInArtistResults) {
+                if (err) {
+                    cb(err);
+                } else {
+                    shop_pick_results.attArtists = shopInArtistResults;
+                    cb(null);
+                }
+            });
+        }], function (err) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null,shop_pick_results);
+            }
+        });
+    }
+    //JSON 객체 생성
+    function resultJSON(shop_results, callback) {
+        var shopList=[];
+
+        async.forEach(shop_results, function(item, cb){
+            var shop_element= {
+                "shop_id": item.id,
+                "name": item.name,
+                "address": item.address,
+                "shop_jjim_counts": item.shop_jjim_counts,
+                "jjim_status": "보류",
+                "longitude": item.longitude,
+                "latitude": item.latitude,
+                "callnumber": item.callnumber,
+                "usetime": item.usetime,
+                "photoURL" : item.photoURL,
+                "attArtists" : item.attArtists
+            };
+            shopList.push(shop_element);
+            cb(null);
+        }, function(err) {
+            if (err) {
+                callback(err);
+            } else {
+                var shop_results = {
+                    "successResult": {
+                        "message": "모든 샵이 정상적으로 조회 되었습니다.",
+                        "page": page,
+                        "listPerPage": listPerPage,
+                        "shopList": shopList
+                    }
+                };
+                callback(null, shop_results);
+            }
+        });
+    }
     var result = {
         "successResult": {
             "message": "해당 샵에 정보가 조회되었습니다.",

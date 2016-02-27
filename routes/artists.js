@@ -1,15 +1,87 @@
 var express = require('express');
 var router = express.Router();
 var async = require('async');
-//2.아티스트 닉네임 설정
+//2. 아티스트 닉네임 조회
+router.get('/me', function (req, res, next) {
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+    function selectArtistNickname(connection, callback){
+        var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname "+
+                               "from artist " +
+                               "where id = ? ";
+        connection.query(artistNicknamesql, 1, function (err, artistNicknameResult){
+            connection.release();
+            if(err){
+                callback(err);
+            }else{
+                callback(null, artistNicknameResult);
+            }
+        });
+    }
+    function resultJSON(artistNicknameResult, callback) {
+        var result = {
+            "successResult": {
+                "message": "닉네임이 정상적으로 조회 되었습니다",
+                "nickname": artistNicknameResult[0].nickname
+            }
+        };
+        callback(null, result);
+    }
+    async.waterfall([getConnection, selectArtistNickname, resultJSON], function (err, result) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(result);
+        }
+    });
+});
+//3.아티스트 닉네임 설정
 router.put('/me', function (req, res, next) {
     var nickname = req.body.nickname;
-    var result = {
-        "successResult": {
-            "message": "닉네임이 정상적으로 등록 되었습니다"
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+    function updateArtistNickname(connection, callback){
+        var artistNicknamesql = "update artist set nickname = ? "+
+                                "where id =?";
+        connection.query(artistNicknamesql, [nickname,1], function (err, artistNicknameResult){
+            connection.release();
+            if(err){
+                callback(err);
+            }else{
+                callback(null, artistNicknameResult);
+            }
+        });
+    }
+    function resultJSON(artistNicknameResult, callback) {
+        var result = {
+            "successResult": {
+                "message": "닉네임이 정상적으로 등록 되었습니다"
+            }
+        };
+        callback(null, result);
+    }
+    async.waterfall([getConnection, updateArtistNickname, resultJSON], function (err, result) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(result);
         }
-    };
-    res.json(result);
+    });
 });
 
 //12. 아티스트 정보조회
@@ -181,7 +253,7 @@ router.get('/', function (req, res, next) {
 
 
 // 13.아티스트 상세조회
-router.get('/:artist_id/details', function (req, res, next) {
+router.get('/:artist_id', function (req, res, next) {
     var artist_id = req.params.artist_id;
 
     var result = {
@@ -212,26 +284,59 @@ router.get('/:artist_id/details', function (req, res, next) {
 
 // 14.한줄평 더보기
 router.get('/:artist_id/comments', function (req, res, next) {
-    var artist_id = req.params.artist_id;
-    var commentpage = req.query.commentpage;
+    var artist_id = parseInt(req.params.artist_id);
+    var commentpage = parseInt(req.query.commentpage);
 
-    var result = {
-        "successResult": {
-            "message": "한줄평을 추가로 불러왔습니다.",
-            "commentpage": commentpage,
-            "listPerPage": 10,
-            "comments": [{
-                "date": "2016-01-12 14:00", "writer": "abcd@example.onix.com",
-                "content": "너무 잘해주세요~"
-            }, {
-                "date": "2016-01-12 16:00", "writer": " dhy123@example.onix.com",
-                "content": "친절하세요~"
-            }]
-        }
-    };
-    res.json(result);
+    commentpage = isNaN(commentpage) ? 2 : commentpage; //타입검사 NaN은 타입을 비교 불가
 
+    var listPerPage = 10;
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+
+    function selectArtistComments(connection, callback){
+        var artistCommentsql = "select writer, register_date, content "+
+                               "from artist_comments ac "+
+                               "where ac.artist_id=? "+
+                               "limit ? offset ? ";
+        var pageArr = [artist_id, listPerPage, (commentpage - 1) * listPerPage];
+        connection.query(artistCommentsql, pageArr, function (err, artistCommentResult){
+            connection.release();
+            if(err){
+                callback(err);
+            }else{
+                callback(null, artistCommentResult);
+            }
+        });
+    }
+
+    function resultJSON(artistCommentResult, callback) {
+        var result = {
+            "successResult": {
+                "message": "한줄평을 추가로 불러왔습니다.",
+                "commentpage": commentpage,
+                "listPerPage": 10,
+                "comments": artistCommentResult
+            }
+        };
+        callback(null, result);
+    }
+    async.waterfall([getConnection, selectArtistComments, resultJSON], function (err, results) {
+            if (err) {
+                next(err);
+            } else {
+                res.json(results);
+            }
+    });
 });
+
 
 // 15.아티스트 한줄평 쓰기
 router.post('/:artist_id/comments', function (req, res, next) {
