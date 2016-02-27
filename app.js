@@ -110,8 +110,10 @@ app.use(function (err, req, res, next) {
     //res.render('error', {
     //에러가 발생하면 json으로 출력
     res.json('error', {
-        message: err.message,
-        error: err
+        "failResult": {
+            err_code: err.err_code,
+            message: err.message
+        }
     });
 });
 
