@@ -32,8 +32,10 @@ router.post('/', function(req, res, next) {
                 } else {
                     if (results.length) { //그런사람 있음
                         connection.release();
-                        var err = new Error('conflict');
-                        err.status = 409;
+                        var err = {
+                                "err_code": -101,
+                                "message": "회원 가입 하지 못하였습니다"
+                        }
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -91,7 +93,11 @@ router.post('/', function(req, res, next) {
             if (err) {
                 next(err);
             } else {
-                result.message = "정상적으로 사용자가 저장되었습니다.";
+                var result = {
+                    "successResult": {
+                        "message": "가입이 정상적으로 처리되었습니다"
+                    }
+                }
                 res.json(result);
             }
         });
