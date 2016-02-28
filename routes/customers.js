@@ -23,8 +23,12 @@ router.post('/', function(req, res, next) {
 
         function selectCustomer(connection, callback) {
             var sql = "select id " +
-                      "from customer " +
-                      "where email_id = ?";
+                      "from artist "+
+                      "where email_id = ?"+
+                      "union all "+
+                      "select id "+
+                      "from customer "+
+                      "where email_id = ? ";
             connection.query(sql, [email_id], function (err, results) {
                 if (err) {
                     connection.release();
@@ -35,7 +39,7 @@ router.post('/', function(req, res, next) {
                         var err = {
                                 "err_code": -101,
                                 "message": "회원 가입 하지 못하였습니다"
-                        }
+                        };
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -97,7 +101,7 @@ router.post('/', function(req, res, next) {
                     "successResult": {
                         "message": "가입이 정상적으로 처리되었습니다"
                     }
-                }
+                };
                 res.json(result);
             }
         });
