@@ -1,115 +1,82 @@
 var express = require('express');
 var router = express.Router();
+var bcrypt = require('bcrypt');
+var passport = require('passport');
+
+
+function isLoggedIn(req, res, next) {
+  if (!req.isAuthenticated()) {
+    var err = new Error('로그인 하셔야 됩니다...');
+    err.status = 401;
+    next(err);
+  } else {
+    next();
+  }
+}
+
+router.post('/logout', function(req, res, next) {
+  req.logout(); //세션에서 정보를 지움
+  res.json({
+    "successResult": {
+      "message": "로그아웃 되었습니다..."
+    }
+  })
+});
+
+router.get('/me', isLoggedIn, function (req, res, next) {
+  if (req.secure) {
+    var user = req.user;
+    var result = {
+      "successResult": {
+        "message": "내정보를 불러왔습니다",
+        "id": user.id,
+        "email_id": user.email_id,
+        "nickname": user.nickname
+      }
+    };
+    res.json(result);
+  } else {
+    var err = new Error('SSL/TLS Upgrade Required');
+    err.status = 426;
+    next(err);
+  }
+});
+
 
 //3.로컬로그인
+// 로그인을 위한 미들웨어를 등록한다.
 router.post('/local', function (req, res, next) {
-    if (req.secure) {
-        var email_id = req.body.email_id; //고객,아티스트 id
-        var password = req.body.password; // 비밀번호
-        var registration_token = req.body.registration_token; //고객 푸시 토큰
-        var user_type = req.body.user_type; // 로그인 타입( 고객: 1, 아티스트: 2)
-        router.post('/login', function (req, res, next) {
+  if (req.secure) { //req.protocol === "https" 즉 https로 통신하고 있는지 판별
 
-            function getUserInput(callback) {
-                var user = {
-                    "email_id": req.body.email_id,
-                    "password": req.body.password
-                };
-                callback(null, user);
-            }
-
-            function getConnection(user, callback) {
-                pool.getConnection(function (err, connection) {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        callback(null, user, connection);
-                    }
-                });
-            }
-
-            function selectUser(user, connection, callback) {
-                var sql = "select id, password " +
-                    "from user " +
-                    "where username=?";
-                connection.query(sql, [user.username], function (err, results) {
-                    connection.release();
-                    if (err) {
-                        callback(err);
-                    }
-                    else {
-                        if (results.length === 0) {
-                            callback(new Error('사용자가 존재하지 않습니다.'));
-                        } else {
-                            user.id = results[0].id;
-                            user.hashPassword = results[0].password;
-                            callback(null, user);
-                        }
-                    }
-                });
-            }
-
-            function compareUserInput(user, callback) {
-                bcrypt.compare(user.password, user.hashPassword, function (err, result) {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        if (result) {
-                            req.session.userID = user.id;
-                            var success = {
-                                "message": "가입이 정상적으로 처리되었습니다"
-                            };
-                            callback(null, success);
-                        } else {
-                            var fail = {
-                                "message": "회원 가입 하지 못 하였습니다"
-                            }
-                            callback(null, fail)
-                        }
-                    }
-                });
-            }
-
-            //task 수행 간 결과를 입력으로 전달하는 구조를 지원
-            async.waterfall([getUserInput, getConnection, selectUser, compareUserInput], function (err, result) {
-                if (err) {
-                    next(err);
-                } else {
-                    res.json(result);
-                }
-            });
-
-        });
-        var result = {
-            "successResult": {
-                "message": "로그인 되셨습니다"
-            }
-        };
-        res.json(result);
-    } else {
-        var err = new Error('SSL/TLS Upgrade Required!!!');
-        err.status = 426;
+    passport.authenticate('local-login', function (err, user, info) { // passport로부터 user객체 받아온다.
+      if (err) {
         next(err);
-    }
+      } else if (!user) { //password가 다를 때는 user에 false가 넘어온다.
+        var err = new Error('암호를 확인하시기 바랍니다.');
+        err.status = 401;
+        next(err);
+      } else {
+        req.logIn(user, function (err) {
+          if (err) {
+            next(err);
+          } else {
+            var result = {
+              "successResult": {
+                "message": "로그인 되셨습니다"
+              }
+            };
+            res.json(result);
+          }
+        }); // passport가 설치되면 req객체에게 logIn이라는 함수를 쓸 수 있도록 연결해준다.
+      }
+    })(req, res, next);
+  } else {
+    //https로 안 들어오고 http로 들어오면 이게 뜬다.
+    var err = new Error('SSL/TLS Upgrade Required');
+    err.status = 426; // upgrade required.
+    next(err);
+  }
 });
 
-//4.페이스북로그인
-router.post('/facebook', function (req, res, next) {
-    if (req.secure) {
-        var access_token  = req.body.access_token; // 비밀번호
-        var registration_token = req.body.registration_token; //고객 푸시 토큰
-
-        var result = {
-            "successResult": {
-                "message": "로그인 되셨습니다"
-            }
-        };
-        res.json(result);
-    } else {
-        var err = new Error('SSL/TLS Upgrade Required!!!');
-        err.status = 426;
-        next(err);
-    }
-});
 
 module.exports = router;
