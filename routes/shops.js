@@ -8,15 +8,9 @@ router.get('/', function (req, res, next) {
     var page = parseInt(req.query.page);
     page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
 
-    var idx = 0; //인덱스
     var listPerPage = 10;
-
     var condition = req.query.condition; //거리순, 추천순
-
     var search = req.query.search; // 검색
-
-    console.log(condition);
-    console.log(search);
 
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
@@ -62,7 +56,14 @@ router.get('/', function (req, res, next) {
     }
     //샵 사진과 소속 아티스트들을 가져온다
     function selectShopDetails(connection, shop_results, callback) {
-        idx=0;
+        var idx = 0; //인덱스
+        var userId = 0;
+        if (req.isAuthenticated()) {
+            if(req.user.nickname === null){
+                userId = req.user.id;
+            }
+        }
+
         async.eachSeries(shop_results, function(item,cb){
             var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                  "from photo_datas pd "+
@@ -82,6 +83,10 @@ router.get('/', function (req, res, next) {
                                                                "group by from_id) pd "+
                                                     "on (pd.from_id = a.id)" +
                                                     "where s.id = ?";
+            var shop_customer_jjim_sql = "select customer_id, shop_id " +
+                                         "from jjim_shops " +
+                                         "where customer_id =? and shop_id =? ";
+
             async.series([function (cb2) {
                 connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
                     if (err) {
@@ -97,6 +102,15 @@ router.get('/', function (req, res, next) {
                         cb2(err);
                     } else {
                         shop_results[idx].attArtists = shopInArtistResults;
+                        cb2(null);
+                    }
+                });
+            }, function (cb2) {
+                connection.query(shop_customer_jjim_sql, [userId ,item.id], function (err, customerJJimResult) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        shop_results[idx].jjim_status = (customerJJimResult.length !== 0) ? 1 : 0 ;
                         cb2(null);
                     }
                 });
@@ -130,7 +144,7 @@ router.get('/', function (req, res, next) {
                 "name": item.name,
                 "address": item.address,
                 "shop_jjim_counts": item.shop_jjim_counts,
-                "jjim_status": "보류",
+                "jjim_status": item.jjim_status,
                 "longitude": item.longitude,
                 "latitude": item.latitude,
                 "callnumber": item.callnumber,
