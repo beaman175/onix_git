@@ -15,8 +15,8 @@ router.get('/me', function (req, res, next) {
     }
     function selectArtistNickname(connection, callback){
         var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname "+
-                               "from artist " +
-                               "where id = ? ";
+                                "from artist " +
+                                "where id = ? ";
         connection.query(artistNicknamesql, 1, function (err, artistNicknameResult){
             connection.release();
             if(err){
@@ -89,7 +89,6 @@ router.get('/', function (req, res, next) {
     var page = parseInt(req.query.page);
     page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
 
-    var idx = 0; //인덱스
     var listPerPage = 10;
 
     var condition = req.query.condition; //거리순, 추천순
@@ -139,7 +138,14 @@ router.get('/', function (req, res, next) {
 
     //아티스트 사진, 서비스, 댓글들을 가져온다
     function selectArtistsDetail(connection, artist_results, callback) {
-        idx = 0;
+        var idx = 0;
+        var userId = 0;
+        if (req.isAuthenticated()) {
+            if(req.user.nickname === null){
+                userId = req.user.id;
+            }
+        }
+
         async.eachSeries(artist_results, function (item, cb) {
             var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
                                    "from photo_datas pd " +
@@ -151,11 +157,13 @@ router.get('/', function (req, res, next) {
                                                     "on (sv.artist_id = a.id) " +
                                       "where a.id = ?" ;
 
-            var artist_comments = "select writer, register_date, content, artist_id " +
-                                  "from artist_comments ac "+
-                                  "where ac.artist_id= ? " +
-                                   "limit 10 offset 0";
-
+            var artist_comments_sql = "select writer, register_date, content, artist_id " +
+                                      "from artist_comments ac "+
+                                      "where ac.artist_id= ? " +
+                                      "limit 10 offset 0";
+            var artist_customer_jjim_status_sql = "select customer_id, artist_id "+
+                                                  "from jjim_artists "+
+                                                  "where customer_id =? and artist_id =?";
 
             async.series([function (cb2) {
                 connection.query(artist_photo_sql, item.id, function (err, artist_photo_results) {
@@ -176,11 +184,20 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                connection.query(artist_comments, item.id, function (err, artist_comments_results) {
+                connection.query(artist_comments_sql, item.id, function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
                     } else {
                         artist_results[idx].comments = artist_comments_results;
+                        cb2(null);
+                    }
+                });
+            }, function (cb2) {
+                connection.query(artist_customer_jjim_status_sql, item.id, function (err, artist_comments_results) {
+                    if (err) {
+                        cb2(err);
+                    } else {
+                        artist_results[idx].jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
                         cb2(null);
                     }
                 });
@@ -215,7 +232,7 @@ router.get('/', function (req, res, next) {
                     "artist_jjim_counts": item.artist_jjim_counts,
                     "discount": item.discount,
                     "intro" : item.intro,
-                    "jjim_status": "보류",
+                    "jjim_status": item.jjim_status,
                     "shop_id": item.shop_id,
                     "artistPhotos": item.artistPhotos,
                     "services": item.services,
@@ -253,6 +270,7 @@ router.get('/', function (req, res, next) {
 router.get('/:artist_id', function (req, res, next) {
     var artist_id = parseInt(req.params.artist_id);
 
+
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
@@ -264,6 +282,13 @@ router.get('/:artist_id', function (req, res, next) {
     }
 
     function selectArtistsDetail(connection, callback) {
+        var userId = 0;
+        if (req.isAuthenticated()) {
+            if(req.user.nickname === null){
+                userId = req.user.id;
+            }
+        }
+
         var artist_pick_sql = "select id, nickname, discount,intro, shop_id "+
                               "from artist "+
                               "where id=?";
@@ -283,6 +308,9 @@ router.get('/:artist_id', function (req, res, next) {
                                    "where ac.artist_id= ? " +
                                    "limit 10 offset 0";
 
+        var artist_customer_jjim_status_sql = "select customer_id, artist_id "+
+                                              "from jjim_artists "+
+                                              "where customer_id =? and artist_id =?";
 
         async.waterfall([function (cb) {
             connection.query(artist_pick_sql, artist_id, function (err, artist_pick_results) {
@@ -310,16 +338,25 @@ router.get('/:artist_id', function (req, res, next) {
                     cb(null,artist_pick_results);
                 }
             });
-        }, function (artist_pick_results,cb) {
+        }, function (artist_pick_results, cb) {
             connection.query(artist_pick_comments,artist_id, function (err, artist_comments_results) {
                 if (err) {
-                    cb2(err);
+                    cb(err);
                 } else {
                     artist_pick_results.comments = artist_comments_results;
                     cb(null, artist_pick_results);
                 }
             });
-        }], function (err,artist_pick_results) {
+        }, function (artist_pick_results, cb) {
+            connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
+                if (err) {
+                    cb(err);
+                } else {
+                    artist_pick_results.jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
+                    cb(null, artist_pick_results);
+                }
+            });
+        }], function (err, artist_pick_results) {
             if (err) {
                 callback(err);
             } else {
@@ -338,7 +375,7 @@ router.get('/:artist_id', function (req, res, next) {
                 "nickname": artist_pick_results[0].nickname,
                 "discount": artist_pick_results[0].discount,
                 "intro": artist_pick_results[0].intro,
-                "jjim_status": "보류",
+                "jjim_status": artist_pick_results[0].jjim_status,
                 "shop_id": artist_pick_results[0].shop_id,
                 "artistPhotos": artist_pick_results.artistPhotos,
                 "services": artist_pick_results.services,

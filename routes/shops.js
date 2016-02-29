@@ -68,6 +68,7 @@ router.get('/', function (req, res, next) {
             var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                  "from photo_datas pd "+
                                  "where pd.from_type ='샵' and pd.from_id =?";
+
             var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
                                              "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
                                       "from artist a left join(select id " +
@@ -83,6 +84,7 @@ router.get('/', function (req, res, next) {
                                                                "group by from_id) pd "+
                                                     "on (pd.from_id = a.id)" +
                                                     "where s.id = ?";
+
             var shop_customer_jjim_sql = "select customer_id, shop_id " +
                                          "from jjim_shops " +
                                          "where customer_id =? and shop_id =? ";
@@ -183,8 +185,6 @@ router.get('/', function (req, res, next) {
 
 
 
-
-
 //11.샵 상세 조회
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
@@ -200,6 +200,12 @@ router.get('/:shop_id', function (req, res, next) {
     }
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
+        var userId = 0;
+        if (req.isAuthenticated()) {
+            if(req.user.nickname === null){
+                userId = req.user.id;
+            }
+        }
 
         var shop_pick_sql = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
                                    "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
@@ -229,6 +235,10 @@ router.get('/:shop_id', function (req, res, next) {
                                                    "on (pd.from_id = a.id)" +
                                      "where s.id = ?";
 
+        var shop_customer_jjim_sql = "select customer_id, shop_id " +
+                                     "from jjim_shops " +
+                                     "where customer_id =? and shop_id =? ";
+
         async.waterfall([function (cb) {
             connection.query(shop_pick_sql, [shop_id,shop_id], function (err, shopPickResults) {
                 if (err) {
@@ -255,6 +265,15 @@ router.get('/:shop_id', function (req, res, next) {
                     cb(null,shop_pick_results);
                 }
             });
+        }, function (cb) {
+            connection.query(shop_customer_jjim_sql, [userId ,item.id], function (err, customerJJimResult) {
+                if (err) {
+                    cb(err);
+                } else {
+                    shop_results.jjim_status = (customerJJimResult.length !== 0) ? 1 : 0 ;
+                    cb(null);
+                }
+            });
         }], function (err, shop_pick_results) {
             if (err) {
                 callback(err);
@@ -271,7 +290,7 @@ router.get('/:shop_id', function (req, res, next) {
                 "name": shop_pick_results[0].name,
                 "address": shop_pick_results[0].address,
                 "jjim_counts": shop_pick_results[0].shop_jjim_counts,
-                "jjim_status": "보류",
+                "jjim_status": shop_pick_results[0].jjim_status,
                 "longitude": shop_pick_results[0].longitude,
                 "latitude": shop_pick_results[0].latitude,
                 "callnumber": shop_pick_results[0].callnumber,
