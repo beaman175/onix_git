@@ -46,26 +46,125 @@ router.get('/', function (req, res, next) {
 //8.찜하기
 router.post('/:target_id/plus', function (req, res, next) {
     var target_id = req.params.target_id;
-    var target = req.body.target; //2(아티스트), 3(shop) (필수사항)
-    var result = {
-        "successResult": {
-            "message": "찜이 추가 되었습니다"
+    var target = parseInt(req.body.target); //2(아티스트), 3(shop) (필수사항)
+    var userId = 0;
+
+    function checkingTarget(callback) {
+        if (target === 2 || target === 3) {
+            if (req.isAuthenticated()) {
+                if (req.user.nickname === null) {
+                    userId = req.user.id;
+                    callback(null);
+                }
+            }
         }
-    };
-    res.json(result);
+        var failResult = {
+            "err_code": -109,
+            "message": "찜하기에 에러가 발생하였습니다."
+        };
+        callback(failResult);
+    }
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+
+    function insertJJim(connection, callback) {
+        if (target === 2) {
+            var jjim_sql = "insert into jjim_artists(customer_id, artist_id) values (?,?)";
+        } else {
+            var jjim_sql = "insert into jjim_shops(customer_id, shop_id) values (?,?)";
+        }
+        connection.query(jjim_sql, [userId, target_id], function (err, jjimResult) {
+            connection.release();
+            if (err) {
+                callback(err);
+            } else {
+                var result = {
+                    "successResult": {
+                        "message": "찜이 추가 되었습니다"
+                    }
+                };
+                callback(null, result);
+            }
+        });
+    }
+
+    async.waterfall([checkingTarget, getConnection, insertJJim], function (err, result) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(result);
+        }
+    });
+
 });
 
 //9.찜삭제
 router.delete('/:target_id/minus', function (req, res, next) {
     var target_id = req.params.target_id;
-    var target = req.body.target; //2(아티스트), 3(shop) (필수사항)
-    var result = {
-        "successResult": {
-            "message": "해당 찜이 삭제 되었습니다"
-        }
-    };
-    res.json(result);
-});
+    var target = parseInt(req.body.target); //2(아티스트), 3(shop) (필수사항)
+    var userId = 0;
 
+    function checkingTarget(callback) {
+        if (target === 2 || target === 3) {
+            if (req.isAuthenticated()) {
+                if (req.user.nickname === null) {
+                    userId = req.user.id;
+                    callback(null);
+                }
+            }
+        }
+        var failResult = {
+            "err_code": -110,
+            "message": "찜삭제 하는 도중에 에러가 발생하였습니다."
+        };
+        callback(failResult);
+    }
+
+    function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, connection);
+            }
+        });
+    }
+    function deleteJJim(connection, callback){
+        if (target === 2) {
+            var jjim_sql = "delete from jjim_artists where customer_id=? and artist_id=? ";
+        } else {
+            var jjim_sql = "delete from jjim_shops where customer_id=? and shop_id=? ";
+        }
+        connection.query(jjim_sql, [userId, target_id], function (err, jjimResult) {
+            connection.release();
+            if(err){
+                callback(err);
+            }else{
+                var result = {
+                    "successResult": {
+                        "message": "해당 찜이 삭제 되었습니다"
+                    }
+                };
+                callback(null, result);
+            }
+        });
+    }
+
+    async.waterfall([checkingTarget, getConnection, deleteJJim], function (err, result) {
+        if (err) {
+            next(err);
+        } else {
+            res.json(result);
+        }
+    });
+});
 
 module.exports = router;
