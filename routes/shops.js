@@ -28,11 +28,11 @@ router.get('/', function (req, res, next) {
         var finding = "where s.name = " +search;
 
         var shop_sql =  "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-                                "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
-                         "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
-                                                "from jjim_shops "+
-                                                "group by shop_id)js " +
-                         "on (js.shop_id = s.id) ";
+          "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
+          "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
+          "from jjim_shops "+
+          "group by shop_id)js " +
+          "on (js.shop_id = s.id) ";
 
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
@@ -66,28 +66,28 @@ router.get('/', function (req, res, next) {
 
         async.eachSeries(shop_results, function(item,cb){
             var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
-                                 "from photo_datas pd "+
-                                 "where pd.from_type ='샵' and pd.from_id =?";
+              "from photo_datas pd "+
+              "where pd.from_type ='샵' and pd.from_id =?";
 
             var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                             "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
-                                      "from artist a left join(select id " +
-                                                              "from shop) s "+
-                                                    "on (a.shop_id = s.id)" +
-                                                    "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
-                                                              "from jjim_artists "+
-                                                              "group by artist_id) ja "+
-                                                         "on (ja.artist_id = a.id) "+
-                                                    "left join (select id,from_id,path,photoname,file_type "+
-                                                               "from photo_datas "+
-                                                               "where from_type = '아티스트' " +
-                                                               "group by from_id) pd "+
-                                                    "on (pd.from_id = a.id)" +
-                                                    "where s.id = ?";
+              "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+              "from artist a left join(select id " +
+              "from shop) s "+
+              "on (a.shop_id = s.id)" +
+              "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
+              "from jjim_artists "+
+              "group by artist_id) ja "+
+              "on (ja.artist_id = a.id) "+
+              "left join (select id,from_id,path,photoname,file_type "+
+              "from photo_datas "+
+              "where from_type = '아티스트' " +
+              "group by from_id) pd "+
+              "on (pd.from_id = a.id)" +
+              "where s.id = ?";
 
             var shop_customer_jjim_sql = "select customer_id, shop_id " +
-                                         "from jjim_shops " +
-                                         "where customer_id =? and shop_id =? ";
+              "from jjim_shops " +
+              "where customer_id =? and shop_id =? ";
 
             async.series([function (cb2) {
                 connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
@@ -208,36 +208,36 @@ router.get('/:shop_id', function (req, res, next) {
         }
 
         var shop_pick_sql = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-                                   "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
-                            "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
-                                                   "from jjim_shops " +
-                                                   "where shop_id = ? )js " +
-                                             "on (js.shop_id = s.id) " +
-                            "where shop_id=?";
+          "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
+          "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
+          "from jjim_shops " +
+          "where shop_id = ? )js " +
+          "on (js.shop_id = s.id) " +
+          "where shop_id=?";
 
         var shop_pick_photo_sql = "select from_id,concat(pd.path,'/',pd.photoname,file_type) as phtoURL " +
-                                  "from photo_datas pd " +
-                                  "where pd.from_type ='샵' and pd.from_id =?";
+          "from photo_datas pd " +
+          "where pd.from_type ='샵' and pd.from_id =?";
 
         var shop_pick_artists_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                            "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
-                                     "from artist a left join(select id " +
-                                                             "from shop) s "+
-                                                    "on (a.shop_id = s.id)" +
-                                                   "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
-                                                             "from jjim_artists "+
-                                                             "group by artist_id) ja "+
-                                                   "on (ja.artist_id = a.id) "+
-                                                   "left join (select id,from_id,path,photoname,file_type "+
-                                                              "from photo_datas "+
-                                                              "where from_type = '아티스트' " +
-                                                              "group by from_id) pd "+
-                                                   "on (pd.from_id = a.id)" +
-                                     "where s.id = ?";
+          "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+          "from artist a left join(select id " +
+          "from shop) s "+
+          "on (a.shop_id = s.id)" +
+          "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
+          "from jjim_artists "+
+          "group by artist_id) ja "+
+          "on (ja.artist_id = a.id) "+
+          "left join (select id,from_id,path,photoname,file_type "+
+          "from photo_datas "+
+          "where from_type = '아티스트' " +
+          "group by from_id) pd "+
+          "on (pd.from_id = a.id)" +
+          "where s.id = ?";
 
         var shop_customer_jjim_sql = "select customer_id, shop_id " +
-                                     "from jjim_shops " +
-                                     "where customer_id =? and shop_id =? ";
+          "from jjim_shops " +
+          "where customer_id =? and shop_id =? ";
 
         async.waterfall([function (cb) {
             connection.query(shop_pick_sql, [shop_id,shop_id], function (err, shopPickResults) {
