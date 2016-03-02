@@ -75,8 +75,8 @@ router.get('/', function (req, res, next) {
             var results = {
                 "successResult": {
                     "message": "찜목록 보기를 조회하였습니다",
-                    "page": 1,
-                    "listPerPage": 10,
+                    "page": page,
+                    "listPerPage": listPerPage,
                     "artistsList": jjimArtistResults,
                     "shopsList": jjimShopResults
                 }

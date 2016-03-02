@@ -3,6 +3,11 @@ var router = express.Router();
 var async = require('async');
 //2. 아티스트 닉네임 조회
 router.get('/me', function (req, res, next) {
+    if (req.isAuthenticated()) {
+        if(req.user.nickname === undefined){
+            userId =  req.user.id;
+        }
+    }
 
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
