@@ -176,11 +176,9 @@ router.get('/', function (req, res, next) {
                     }
                 }
             } else {
-                var failResult = {
-                    "err_code": -110,
-                    "message": "찜삭제 하는 도중에 에러가 발생하였습니다."
-                };
-                callback(failResult);
+                var err = new Error("찜삭제 하는 도중에 에러가 발생하였습니다.");
+                err.statusCode =  -110;
+                callback(err);
             }
         }
 
