@@ -193,7 +193,7 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                connection.query(artist_customer_jjim_status_sql, item.id, function (err, artist_comments_results) {
+                connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
                     } else {
@@ -202,19 +202,19 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }], function (err) {
-                if(err){
+                if (err) {
                     cb(err);
-                }else{
+                } else {
                     idx++;
                     cb(null);
                 }
             });
 
         }, function (err) {
+            connection.release();
             if (err) {
                 callback(err);
             } else {
-                connection.release();
                 callback(null, artist_results);
             }
         });
@@ -348,11 +348,11 @@ router.get('/:artist_id', function (req, res, next) {
                 }
             });
         }, function (artist_pick_results, cb) {
-            connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
+            connection.query(artist_customer_jjim_status_sql, [userId, artist_id], function (err, artist_comments_results) {
                 if (err) {
                     cb(err);
                 } else {
-                    artist_pick_results.jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
+                    artist_pick_results[0].jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
                     cb(null, artist_pick_results);
                 }
             });
