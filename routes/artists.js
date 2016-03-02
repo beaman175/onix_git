@@ -94,6 +94,14 @@ router.get('/', function (req, res, next) {
     var condition = req.query.condition; //거리순, 추천순
     var search = req.query.search; // 검색
 
+    var idx = 0;
+    var userId = 0;
+    if (req.isAuthenticated()) {
+        if(req.user.nickname === undefined){
+            userId =  req.user.id;
+        }
+    }
+
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
@@ -138,13 +146,9 @@ router.get('/', function (req, res, next) {
 
     //아티스트 사진, 서비스, 댓글들을 가져온다
     function selectArtistsDetail(connection, artist_results, callback) {
-        var idx = 0;
-        var userId = 0;
-        if (req.isAuthenticated()) {
-            if(req.user.nickname === null){
-                userId = req.user.id;
-            }
-        }
+
+
+
 
         async.eachSeries(artist_results, function (item, cb) {
             var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
@@ -193,6 +197,7 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
+                console.log(userId);
                 connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
@@ -269,6 +274,12 @@ router.get('/', function (req, res, next) {
 // 13.아티스트 상세조회
 router.get('/:artist_id', function (req, res, next) {
     var artist_id = parseInt(req.params.artist_id);
+    var userId = 0;
+    if (req.isAuthenticated()) {
+        if(req.user.nickname === undefined){
+            userId =  req.user.id;
+        }
+    }
 
 
     function getConnection(callback) {
@@ -282,12 +293,6 @@ router.get('/:artist_id', function (req, res, next) {
     }
 
     function selectArtistsDetail(connection, callback) {
-        var userId = 0;
-        if (req.isAuthenticated()) {
-            if(req.user.nickname === null){
-                userId = req.user.id;
-            }
-        }
 
         var artist_pick_sql = "select id, nickname, discount,intro, shop_id "+
                               "from artist "+

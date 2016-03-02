@@ -12,6 +12,12 @@ router.get('/', function (req, res, next) {
     var condition = req.query.condition; //거리순, 추천순
     var search = req.query.search; // 검색
 
+    var userId = 0;
+    if (req.isAuthenticated()) {
+        if(req.user.nickname === undefined){
+            userId =  req.user.id;
+        }
+    }
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
@@ -57,12 +63,6 @@ router.get('/', function (req, res, next) {
     //샵 사진과 소속 아티스트들을 가져온다
     function selectShopDetails(connection, shop_results, callback) {
         var idx = 0; //인덱스
-        var userId = 0;
-        if (req.isAuthenticated()) {
-            if(req.user.nickname === null){
-                userId = req.user.id;
-            }
-        }
 
         async.eachSeries(shop_results, function(item,cb){
             var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
@@ -188,6 +188,12 @@ router.get('/', function (req, res, next) {
 //11.샵 상세 조회
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
+    var userId = 0;
+    if (req.isAuthenticated()) {
+        if(req.user.nickname === undefined){
+            userId =  req.user.id;
+        }
+    }
 
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
@@ -200,12 +206,6 @@ router.get('/:shop_id', function (req, res, next) {
     }
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
-        var userId = 0;
-        if (req.isAuthenticated()) {
-            if(req.user.nickname === null){
-                userId = req.user.id;
-            }
-        }
 
         var shop_pick_sql = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
                             "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
