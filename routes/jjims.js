@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-
+var async = require('async');
 // 6.찜조회
 router.get('/', function (req, res, next) {
     var user_type = parseInt(req.query.user_type); //user_type :1(고객), 2(아티스트)
@@ -52,17 +52,18 @@ router.post('/:target_id/plus', function (req, res, next) {
     function checkingTarget(callback) {
         if (target === 2 || target === 3) {
             if (req.isAuthenticated()) {
-                if (req.user.nickname === null) {
+                if (req.user.nickname === undefined) {
                     userId = req.user.id;
                     callback(null);
                 }
             }
+        }else{
+            var failResult = {
+                "err_code": -109,
+                "message": "찜하기에 에러가 발생하였습니다."
+            };
+            callback(failResult);
         }
-        var failResult = {
-            "err_code": -109,
-            "message": "찜하기에 에러가 발생하였습니다."
-        };
-        callback(failResult);
     }
 
     function getConnection(callback) {
@@ -115,17 +116,18 @@ router.delete('/:target_id/minus', function (req, res, next) {
     function checkingTarget(callback) {
         if (target === 2 || target === 3) {
             if (req.isAuthenticated()) {
-                if (req.user.nickname === null) {
+                if (req.user.nickname === undefined) {
                     userId = req.user.id;
                     callback(null);
                 }
             }
+        }else{
+            var failResult = {
+                "err_code": -110,
+                "message": "찜삭제 하는 도중에 에러가 발생하였습니다."
+            };
+            callback(failResult);
         }
-        var failResult = {
-            "err_code": -110,
-            "message": "찜삭제 하는 도중에 에러가 발생하였습니다."
-        };
-        callback(failResult);
     }
 
     function getConnection(callback) {
