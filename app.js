@@ -87,7 +87,7 @@ app.use(function (err, req, res, next) {
     //에러가 발생하면 json으로 출력
     res.json('error', {
         "failResult": {
-            err_code: err.err_code,
+            err_code: err.statusCode,
             message: err.message
         }
     });
