@@ -34,11 +34,11 @@ router.get('/', function (req, res, next) {
         var finding = "where s.name = " +search;
 
         var shop_sql =  "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-          "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
-          "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
-          "from jjim_shops "+
-          "group by shop_id)js " +
-          "on (js.shop_id = s.id) ";
+                               "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
+                        "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
+                                               "from jjim_shops "+
+                                               "group by shop_id)js " +
+                                     "on (js.shop_id = s.id) ";
 
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
