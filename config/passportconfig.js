@@ -19,7 +19,7 @@ module.exports = function (passport) {
                     "where id = ?";
 
         } else if (user.user_type === 2) {
-          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id " +
+          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id, nickname " +
                     "from artist " +
                     "where id = ?";
         }
