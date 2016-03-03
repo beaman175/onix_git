@@ -488,7 +488,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
             var writer = req.user.email_id.substring(0,(req.user.email_id.indexOf('@')-3)).concat('***');
             callback(null,writer);
         }else{
-            var err = new Error('아티스트는 등록 할 수 없습니다');
+            var err = new Error('아티스트는 한줄평을 쓸 수 없습니다');
             callback(err);
         }
     }
@@ -509,7 +509,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
 
         connection.query(insertCommentSql, [writer, content, artist_id], function (err) {
             if (err) {
-                var err = new Error('댓글 게시에 실패했습니다.');
+                var err = new Error('한줄평 게시에 실패했습니다.');
                 err.statusCode = -116;
                 callback(err);
             } else {
@@ -524,7 +524,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
         } else {
             var result = {
                 "successResult": {
-                    "message": "댓글이 정상적으로 게시 되었습니다."
+                    "message": "한줄평이 정상적으로 게시 되었습니다."
                 }
             };
             res.json(result);
