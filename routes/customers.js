@@ -24,12 +24,12 @@ router.post('/', function(req, res, next) {
         function selectCustomer(connection, callback) {
             var sql = "select id " +
                       "from artist "+
-                      "where email_id = ?"+
+                      "where email_id = ? "+
                       "union all "+
                       "select id "+
                       "from customer "+
                       "where email_id = ? ";
-            connection.query(sql, [email_id], function (err, results) {
+            connection.query(sql, [email_id,email_id], function (err, results) {
                 if (err) {
                     connection.release();
                     callback(err);
