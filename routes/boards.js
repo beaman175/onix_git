@@ -30,8 +30,8 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     //게시글 목록을 select
     function selectBoards(connection, callback) {
 
-        var boards_sql =  "select pbd.id as board_id, pbd.name ,p.id, p.writer, p.register_date, p.title, p.content, " +
-                          "concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+        var boards_sql =  "select pbd.id as board_id, pbd.name ,p.id, p.writer, date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                  "as 'register_date',, p.title, p.content, concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
                           "from postboard pbd join (select id, postboard_id, writer, register_date, title, content " +
                                                     "from posts) p "+
                                              "on (p.postboard_id = pbd.id) " +
@@ -64,7 +64,8 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     function selectBoardsReplies(connection, board_results, callback) {
         idx = 0;
         async.eachSeries(board_results, function (item, cb) {
-            var boards_comments = "select writer, register_date, content " +
+            var boards_comments = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                          "as 'register_date', content " +
                                   "from reply  " +
                                   "where posts_id = ?  " +
                                   "limit 10 offset 0";
@@ -152,7 +153,8 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
     }
 
     function selectBoardReplies(connection, callback){
-        var boardRepliessql = "select r.writer, r.register_date, r.content " +
+        var boardRepliessql = "select r.writer, date_format(convert_tz(r.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                      "as 'register_date', r.content " +
                               "from reply r join postboard pb on (pb.id = r.posts_id) " +
                               "where r.posts_id= ?  and pb.id = ? " +
                               "limit ? offset ?";

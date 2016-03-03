@@ -163,9 +163,6 @@ router.get('/', function (req, res, next) {
     //아티스트 사진, 서비스, 댓글들을 가져온다
     function selectArtistsDetail(connection, artist_results, callback) {
 
-
-
-
         async.eachSeries(artist_results, function (item, cb) {
             var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
                                    "from photo_datas pd " +
@@ -177,7 +174,8 @@ router.get('/', function (req, res, next) {
                                                     "on (sv.artist_id = a.id) " +
                                       "where a.id = ?" ;
 
-            var artist_comments_sql = "select writer, register_date, content, artist_id " +
+            var artist_comments_sql = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                      "as 'register_date', content, artist_id " +
                                       "from artist_comments ac "+
                                       "where ac.artist_id= ? " +
                                       "limit 10 offset 0";
@@ -324,9 +322,10 @@ router.get('/:artist_id', function (req, res, next) {
                                                      "on (sv.artist_id = a.id) " +
                                        "where a.id = ?" ;
 
-        var artist_pick_comments = "select writer, register_date, content " +
-                                   "from artist_comments ac "+
-                                   "where ac.artist_id= ? " +
+        var artist_pick_comments = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                           "as 'register_date', content " +
+                                   "from artist_comments "+
+                                   "where artist_id= ? " +
                                    "limit 10 offset 0";
 
         var artist_customer_jjim_status_sql = "select customer_id, artist_id "+
@@ -434,9 +433,10 @@ router.get('/:artist_id/comments', function (req, res, next) {
     }
 
     function selectArtistComments(connection, callback){
-        var artistCommentsql = "select writer, register_date, content "+
-                               "from artist_comments ac "+
-                               "where ac.artist_id=? "+
+        var artistCommentsql = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+                                      "as 'register_date', content "+
+                               "from artist_comments "+
+                               "where artist_id=? "+
                                "limit ? offset ? ";
         var pageArr = [artist_id, listPerPage, (commentpage - 1) * listPerPage];
         connection.query(artistCommentsql, pageArr, function (err, artistCommentResult){
