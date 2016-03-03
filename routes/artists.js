@@ -509,7 +509,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
 
         connection.query(insertCommentSql, [writer, content, artist_id], function (err) {
             if (err) {
-                var err = new Error('한줄평 게시에 실패했습니다.');
+                var err = new Error('한줄평 쓰기에 실패했습니다.');
                 err.statusCode = -116;
                 callback(err);
             } else {
@@ -524,7 +524,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
         } else {
             var result = {
                 "successResult": {
-                    "message": "한줄평이 정상적으로 게시 되었습니다."
+                    "message": "한줄평이 정상적으로 등록되었습니다."
                 }
             };
             res.json(result);
