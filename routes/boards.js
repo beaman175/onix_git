@@ -46,23 +46,20 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
     //게시글 목록을 select
     function selectBoards(connection, callback) {
-
         var boards_sql =  "select pbd.id as board_id, p.id, p.writer, "+
                                  "date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') as 'register_date', " +
                                  "p.title, p.content "+
                           "from postboard pbd join (select id, postboard_id, writer, register_date, title, content "+
                                                    "from posts) p "+
                                              "on (p.postboard_id = pbd.id) "+
-                          "where pbd.id = ?";
+                          "where pbd.id = ? ";
 
-        if(search != undefined){
-            var finding = "where p.title like " + '"%'+search+'%"';
-            console.log(finding);
+        if (search != undefined) {
+            var finding = "and p.title like " + '"%' + search + '%"';
             boards_sql += finding;
-            boards_sql += " LIMIT ? OFFSET ?";
-        }else{
-            boards_sql += " LIMIT ? OFFSET ?";
         }
+        boards_sql += " LIMIT ? OFFSET ?";
+
         var pageArr = [postBoard_id, listPerPage, (page - 1) * listPerPage];
 
         connection.query(boards_sql, pageArr, function (err, board_results) {
