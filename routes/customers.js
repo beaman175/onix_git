@@ -2,8 +2,9 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 var bcrypt = require('bcrypt');
+var hexkey = process.env.FMS_SERVER_KEY;
 
-  //1.고객 로컬 회원 가입
+//1.고객 로컬 회원 가입
 router.post('/', function(req, res, next) {
     if (req.secure) {
         var email_id = req.body.email_id;
@@ -23,23 +24,22 @@ router.post('/', function(req, res, next) {
 
         function selectCustomer(connection, callback) {
             var sql = "select id " +
-                      "from artist "+
-                      "where email_id = ? "+
-                      "union all "+
-                      "select id "+
-                      "from customer "+
-                      "where email_id = ? ";
-            connection.query(sql, [email_id,email_id], function (err, results) {
+              "from artist "+
+              "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))" +
+              "union all "+
+              "select id "+
+              "from customer "+
+              "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+            connection.query(sql, function (err, results) {
                 if (err) {
                     connection.release();
                     callback(err);
                 } else {
                     if (results.length) { //그런사람 있음
                         connection.release();
-                        var err = {
-                                "err_code": -101,
-                                "message": "회원 가입 하지 못하였습니다"
-                        };
+                        var err = new Error('회원 가입 하지 못하였습니다');
+                        err.statusCode = -101;
+
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -79,8 +79,10 @@ router.post('/', function(req, res, next) {
         // 4. DB insert
         function insertCustomer(hashPassword, connection, callback) {
             var sql = "insert into customer (email_id, password) " +
-                      "values (?, ?)";
-            connection.query(sql, [email_id, hashPassword], function (err, result) {
+              "VALUES (aes_encrypt(" + connection.escape(email_id) + ", unhex(" + connection.escape(hexkey) + ")), " +
+              connection.escape(hashPassword) + ")";
+
+            connection.query(sql, function (err, result) {
                 connection.release();
                 if (err) {
                     console.log("insert에러");
