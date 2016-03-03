@@ -71,7 +71,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
         });
     }
 
-    //댓글을 불러온다
+    //사진과 댓글을 불러온다
     function selectBoardsDetails(connection, board_results, callback) {
         idx = 0;
         async.eachSeries(board_results, function (item, cb) {
