@@ -1,6 +1,7 @@
 var LocalStrategy = require('passport-local').Strategy;
 var bcrypt = require('bcrypt');
 var async = require('async');
+var hexkey = process.env.FMS_SERVER_KEY;
 
 module.exports = function (passport) {
 
@@ -12,15 +13,15 @@ module.exports = function (passport) {
       if (err) {
         done(err);
       } else {
-
-        if(user.user_type === 1){
-          var sql = "select id, email_id " +
+        if (user.user_type === 1) {
+          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id " +
                     "from customer " +
-                    "where id = ? ";
-        }else if(user.user_type === 2){
-          var sql = "select id, email_id, nickname " +
+                    "where id = ?";
+
+        } else if (user.user_type === 2) {
+          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id " +
                     "from artist " +
-                    "where id = ? ";
+                    "where id = ?";
         }
 
         connection.query(sql, [user.id], function (err, results) {
@@ -45,7 +46,7 @@ module.exports = function (passport) {
     passwordField: "password",
     passReqToCallback: true //false일 경우 다음 함수의 req를 받지 않는다.
   }, function (req, email_id, password, done) {
-     function getConnection(callback) {
+    function getConnection(callback) {
       //pool에서 connection 얻어오기.
       pool.getConnection(function (err, connection) {
         if (err) {
@@ -59,23 +60,21 @@ module.exports = function (passport) {
     function selectUser(connection, callback) {
       var user_type = parseInt(req.body.user_type);
 
-      if(user_type === 1){
-       var sql = "SELECT id, email_id, password " +
+      if (user_type === 1) {
+        var sql = "SELECT id, email_id, password " +
           "FROM customer " +
-          "WHERE email_id=?";
-      }else if(user_type === 2){
-       var sql = "SELECT id, email_id, password " +
+          "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+      } else if (user_type === 2) {
+        var sql = "SELECT id, email_id, password " +
           "FROM artist " +
-          "WHERE email_id=?";
-      }else{
-        var falilResult = {
-          "err_code": -104,
-          "message": "사용자가 존재하지 않습니다..."
-        };
-        callback(falilResult);
+          "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+      } else {
+        var err = new Error("사용자가 존재하지 않습니다...");
+        err.statusCode = -104;
+        callback(err);
       }
 
-      connection.query(sql, [email_id], function (err, results) {
+      connection.query(sql, function (err, results) {
         connection.release();
         if (err) {
           callback(err);
@@ -83,6 +82,7 @@ module.exports = function (passport) {
           //TODO: 5. 사용자가 요청한 username이 있는지 검사한다.
           if (results.length === 0) {
             var err = new Error('사용자가 존재하지 않습니다...');
+            err.statusCode = -104;
             callback(err); // callback(null, false)로 해도 됨
           } else {
             var user = {
