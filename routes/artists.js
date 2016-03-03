@@ -1,6 +1,16 @@
 var express = require('express');
 var router = express.Router();
 var async = require('async');
+
+function isLoggedIn(req, res, next) {
+    if (!req.isAuthenticated()) {
+        var err = new Error('로그인 하셔야 됩니다...');
+        err.status = 401;
+        next(err);
+    } else {
+        next();
+    }
+}
 //2. 아티스트 닉네임 조회
 router.get('/me', function (req, res, next) {
     if (req.isAuthenticated()) {
@@ -470,15 +480,56 @@ router.get('/:artist_id/comments', function (req, res, next) {
 });
 
 // 15.아티스트 한줄평 쓰기
-router.post('/:artist_id/comments', function (req, res, next) {
+router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
     var artist_id = req.params.artist_id;
     var content = req.body.content;
-    var result = {
-        "successResult": {
-            "message": "댓글이 정상적으로 게시 되었습니다."
+    function checkingUser (callback){
+        if (req.user.nickname === undefined) {
+            var writer = req.user.email_id.substring(0,(req.user.email_id.indexOf('@')-3)).concat('***');
+            callback(null,writer);
+        }else{
+            var err = new Error('아티스트는 등록 할 수 없습니다');
+            callback(err);
         }
-    };
-    res.json(result);
+    }
+
+
+    function getConnection(writer, callback) {
+        pool.getConnection(function (err, connection) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, writer, connection);
+            }
+        });
+    }
+    function insertComment (writer, connection, callback){
+        var insertCommentSql = "insert into artist_comments(writer,content,artist_id) " +
+                               "values(?,?,?);";
+
+        connection.query(insertCommentSql, [writer, content, artist_id], function (err) {
+            if (err) {
+                var err = new Error('댓글 게시에 실패했습니다.');
+                err.statusCode = -116;
+                callback(err);
+            } else {
+                callback(null);
+            }
+        });
+    }
+
+    async.waterfall([checkingUser, getConnection, insertComment], function (err) {
+        if (err) {
+            next(err);
+        } else {
+            var result = {
+                "successResult": {
+                    "message": "댓글이 정상적으로 게시 되었습니다."
+                }
+            };
+            res.json(result);
+        }
+    });
 });
 
 
