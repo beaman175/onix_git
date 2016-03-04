@@ -185,7 +185,7 @@ router.get('/', function (req, res, next) {
                                       "where a.id = ?" ;
 
             var artist_comments_sql = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
-                                      "as 'register_date', content, artist_id " +
+                                      "as 'register_date', content " +
                                       "from artist_comments ac "+
                                       "where ac.artist_id= ? " +
                                       "limit 10 offset 0";
