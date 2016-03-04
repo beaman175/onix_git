@@ -174,7 +174,7 @@ router.get('/', function (req, res, next) {
     function selectArtistsDetail(connection, artist_results, callback) {
 
         async.eachSeries(artist_results, function (item, cb) {
-            var artist_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+            var artist_photo_sql = "select pd.path as photoURL " +
                                    "from photo_datas pd " +
                                    "where pd.from_type ='아티스트' and pd.from_id =?";
 
@@ -198,8 +198,18 @@ router.get('/', function (req, res, next) {
                     if (err) {
                         cb2(err);
                     } else {
-                        artist_results[idx].artistPhotos = artist_photo_results;
-                        cb2(null);
+                        var artist_photo_URL=[];
+                        async.eachSeries(artist_photo_results, function(urlValue, cb3){
+                            artist_photo_URL.push(urlValue.photoURL);
+                            cb3(null);
+                        },function (err){
+                            if(err){
+                                cb(err);
+                            }else{
+                                artist_results[idx].artistPhotos = artist_photo_URL;
+                                cb2(null);
+                            }
+                        });
                     }
                 });
             }, function (cb2) {
@@ -221,7 +231,6 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                console.log(userId);
                 connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
@@ -255,7 +264,7 @@ router.get('/', function (req, res, next) {
 
         async.eachSeries(artist_results, function (item, cb) {
             var artist_element = {
-                "artistsList": [{
+           //     "artistsList": [{
                     "artist_id": item.id,
                     "name": item.nickname,
                     "artist_jjim_counts": item.artist_jjim_counts,
@@ -266,7 +275,7 @@ router.get('/', function (req, res, next) {
                     "artistPhotos": item.artistPhotos,
                     "services": item.services,
                     "comments": item.comments
-                }]
+             //   }]
             };
             artistList.push(artist_element);
             cb(null);
@@ -322,7 +331,7 @@ router.get('/:artist_id', function (req, res, next) {
                               "from artist "+
                               "where id=?";
 
-        var artist_pick_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL " +
+        var artist_pick_photo_sql = "select path as photoURL " +
                                     "from photo_datas pd " +
                                     "where pd.from_type ='아티스트' and pd.from_id =?";
 
@@ -355,8 +364,19 @@ router.get('/:artist_id', function (req, res, next) {
                 if (err) {
                     cb(err);
                 } else {
-                    artist_pick_results.artistPhotos = artist_photo_results;
-                    cb(null,artist_pick_results);
+                    var artist_photo_URL=[];
+                    async.eachSeries(artist_photo_results, function(urlValue, cb2){
+                        artist_photo_URL.push(urlValue.photoURL);
+                        cb2(null);
+                    },function (err){
+                        if(err){
+                            cb(err);
+                        }else{
+                            artist_pick_results.artistPhotos = artist_photo_URL;
+                            cb(null,artist_pick_results);
+                        }
+                    });
+
                 }
             });
         }, function (artist_pick_results,cb) {
