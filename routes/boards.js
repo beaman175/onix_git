@@ -46,13 +46,18 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
     //게시글 목록을 select
     function selectBoards(connection, callback) {
-        var boards_sql =  "select pbd.id as board_id, p.id, p.writer, "+
+        var boards_sql =  "select pbd.id as board_id, p.id, p.writer_id, p.writer, "+
                                  "date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') as 'register_date', " +
                                  "p.title, p.content " +
-                          "from postboard pbd join (select id, postboard_id, writer, register_date, title, content "+
+                          "from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content "+
                                                    "from posts) p "+
-                                             "on (p.postboard_id = pbd.id) "+
-                          "where pbd.id = ? ";
+                                             "on (p.postboard_id = pbd.id)" +
+                                             "left join (select from_id, path " +
+            "                                            from photo_datas " +
+            "                                            where from_type ='게시판'  " +
+            "                                            limiy 1,0) pd " +
+            "                                 on (a.id = pd.from_id) " +
+            "               where pbd.id = ? ";
 
         if (search != undefined) {
             var finding = "and p.title like " + '"%' + search + '%"';
@@ -122,6 +127,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
         async.eachSeries(board_results, function (item, cb) {
             var post_element = {
                         "post_id" :item.id,
+                        "writer_id": item.writer_id,
                         "writer": item.writer,
                         "date": item.register_date,
                         "title": item.title,
