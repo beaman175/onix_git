@@ -60,7 +60,6 @@ router.post('/', function(req, res, next) {
                     callback(null, salt, connection);
                 }
             }); //salt 생성횟수
-
         }
 
         // 2. hash password generation
@@ -80,7 +79,7 @@ router.post('/', function(req, res, next) {
         function insertCustomer(hashPassword, connection, callback) {
             var sql = "insert into customer (email_id, password) " +
               "VALUES (aes_encrypt(" + connection.escape(email_id) + ", unhex(" + connection.escape(hexkey) + ")), " +
-              connection.escape(hashPassword) + ")";
+               connection.escape(hashPassword) + ")";
 
             connection.query(sql, function (err, result) {
                 connection.release();

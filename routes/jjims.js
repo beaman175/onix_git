@@ -34,21 +34,21 @@ router.get('/', function (req, res, next) {
                                 "from jjim_shops js join (select id, name, longitude, latitude " +
                                                          "from shop) s " +
                                                    "on (js.shop_id = s.id) " +
-                                                   "left join (select from_id, concat(path,'/', photoname, file_type) as photoURL " +
+                                                   "left join (select from_id, path as photoURL " +
                                                               "from photo_datas " +
                                                               "where from_type ='샵' " +
                                                               "limit 0,1) pd " +
                                                    "on (pd.from_id = s.id) " +
-                               "where customer_id =? " +
-                               "LIMIT ? OFFSET ?";
+                                "where customer_id =? " +
+                                "LIMIT ? OFFSET ?";
 
         var selectArtistJJimSql = "select a.id as artist_id, a.nickname, a.discount, pd.photoURL " +
                                   "from jjim_artists ja join (select id, nickname, discount " +
                                                              "from artist) a " +
                                                        "on (a.id = ja.artist_id) " +
-                                                       "left join (select from_id, concat(path,'/', photoname, file_type) as photoURL " +
+                                                       "left join (select from_id, path as photoURL " +
                                                                   "from photo_datas " +
-                                                                  "where from_type ='아티스트'" +
+                                                                  "where from_type ='프로필'" +
                                                                   "limit 0,1) pd " +
                                                        "on (pd.from_id = a.id) " +
                                   "where ja.customer_id = ? " +

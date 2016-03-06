@@ -141,12 +141,24 @@ router.get('/', function (req, res, next) {
     //아티스트 목록을 select
     function selectArtists(connection, callback) {
 
+/*
         var artist_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
                                  "a.discount, intro, a.shop_id "+
                           "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                    "from jjim_artists "+
                                                    "group by artist_id)ja "+
                                          "on (ja.artist_id = a.id) ";
+*/
+        var artist_sql = "select a.id as artist_id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
+                                "a.discount, intro, a.shop_id, pd.path as artistProfilePhoto "+
+                         "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
+                                                  "from jjim_artists "+
+                                                  "group by artist_id)ja "+
+                                       "on (ja.artist_id = a.id) " +
+                                       "left join (select from_id, path " +
+                                                  "from photo_datas " +
+                                                  "where from_type ='프로필') pd " +
+                                       "on (a.id = pd.from_id) ";
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
             artist_sql += finding;
@@ -264,18 +276,19 @@ router.get('/', function (req, res, next) {
 
         async.eachSeries(artist_results, function (item, cb) {
             var artist_element = {
-           //     "artistsList": [{
-                    "artist_id": item.id,
-                    "name": item.nickname,
-                    "artist_jjim_counts": item.artist_jjim_counts,
-                    "discount": item.discount,
-                    "intro" : item.intro,
-                    "jjim_status": item.jjim_status,
-                    "shop_id": item.shop_id,
-                    "artistPhotos": item.artistPhotos,
-                    "services": item.services,
-                    "comments": item.comments
-             //   }]
+                //     "artistsList": [{
+                "artist_id": item.id,
+                "name": item.nickname,
+                "artist_jjim_counts": item.artist_jjim_counts,
+                "discount": item.discount,
+                "intro": item.intro,
+                "jjim_status": item.jjim_status,
+                "shop_id": item.shop_id,
+                "artistProfilePhoto": item.artistProfilePhoto,
+                "artistPhotos": item.artistPhotos,
+                "services": item.services,
+                "comments": item.comments
+                //   }]
             };
             artistList.push(artist_element);
             cb(null);
@@ -326,6 +339,14 @@ router.get('/:artist_id', function (req, res, next) {
     }
 
     function selectArtistsDetail(connection, callback) {
+        var artist_sql = "select a.id as artist_id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
+            "                    a.discount, intro, a.shop_id, pd.path as artistProfilePhoto " +
+            "                           on (ja.artist_id = a.id) " +
+            "                           left join (select from_id, path " +
+            "                                      from photo_datas " +
+            "                                      where from_type ='프로필' and from_id = ?) pd " +
+            "                           on (a.id = pd.from_id) " +
+            "              where a.id = ?";
 
         var artist_pick_sql = "select id, nickname, discount,intro, shop_id "+
                               "from artist "+
@@ -427,6 +448,7 @@ router.get('/:artist_id', function (req, res, next) {
                 "intro": artist_pick_results[0].intro,
                 "jjim_status": artist_pick_results[0].jjim_status,
                 "shop_id": artist_pick_results[0].shop_id,
+                "artistProfilePhoto" : artist_pick_results[0].artistProfilePhoto,
                 "artistPhotos": artist_pick_results.artistPhotos,
                 "services": artist_pick_results.services,
                 "comments": artist_pick_results.comments
@@ -503,10 +525,13 @@ router.get('/:artist_id/comments', function (req, res, next) {
 router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
     var artist_id = req.params.artist_id;
     var content = req.body.content;
+
     function checkingUser (callback){
         if (req.user.nickname === undefined) {
+            var writer_id = req.user.id;
             var writer = req.user.email_id.substring(0,(req.user.email_id.indexOf('@')-3)).concat('***');
-            callback(null,writer);
+            var writeInfo = [writer_id, writer, content, artist_id]
+            callback(null,writeInfo);
         }else{
             var err = new Error('아티스트는 한줄평을 쓸 수 없습니다');
             callback(err);
@@ -514,20 +539,20 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
     }
 
 
-    function getConnection(writer, callback) {
+    function getConnection(writeInfo, callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
                 callback(err);
             } else {
-                callback(null, writer, connection);
+                callback(null, writeInfo, connection);
             }
         });
     }
-    function insertComment (writer, connection, callback){
-        var insertCommentSql = "insert into artist_comments(writer,content,artist_id) " +
-                               "values(?,?,?);";
+    function insertComment (writeInfo, connection, callback){
+        var insertCommentSql = "insert into artist_comments(writer_id, writer,content,artist_id) " +
+                               "values(?,?,?,?);";
 
-        connection.query(insertCommentSql, [writer, content, artist_id], function (err) {
+        connection.query(insertCommentSql,writeInfo, function (err) {
             if (err) {
                 var err = new Error('한줄평 쓰기에 실패했습니다.');
                 err.statusCode = -116;

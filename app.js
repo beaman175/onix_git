@@ -10,10 +10,7 @@ var passport = require('passport'); //passport 설치
 global.pool = require('./config/dbpool');
 require('./config/passportconfig')(passport);
 
-
-
 // loading router-level-middleware modules
-var index = require('./routes/index');
 var artists = require('./routes/artists');
 var customers = require('./routes/customers');
 var boards = require('./routes/boards');
@@ -48,7 +45,6 @@ app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
 
 //mapping mount points with router-level middleware modules
-app.use('/',index);
 app.use('/shops',shops);
 app.use('/artists',artists);
 app.use('/customers',customers);

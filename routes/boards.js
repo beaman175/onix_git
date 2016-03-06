@@ -48,7 +48,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     function selectBoards(connection, callback) {
         var boards_sql =  "select pbd.id as board_id, p.id, p.writer, "+
                                  "date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') as 'register_date', " +
-                                 "p.title, p.content "+
+                                 "p.title, p.content " +
                           "from postboard pbd join (select id, postboard_id, writer, register_date, title, content "+
                                                    "from posts) p "+
                                              "on (p.postboard_id = pbd.id) "+

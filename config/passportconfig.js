@@ -8,6 +8,7 @@ module.exports = function (passport) {
   passport.serializeUser(function (user, done) {
     done(null, user);
   });
+
   passport.deserializeUser(function (user,done) { //요청이 있을 때마다 세션에서 id를 가져온다.
     pool.getConnection(function (err, connection) {
       if (err) {
@@ -19,7 +20,8 @@ module.exports = function (passport) {
                     "where id = ?";
 
         } else if (user.user_type === 2) {
-          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id, nickname " +
+          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id, " +
+                               "nickname " +
                     "from artist " +
                     "where id = ?";
         }
@@ -36,7 +38,7 @@ module.exports = function (passport) {
             };
             done(null, user);
           }
-        })
+        });
       }
     });
   });
