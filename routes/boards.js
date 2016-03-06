@@ -80,7 +80,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
                                   "from reply  " +
                                   "where posts_id = ?  " +
                                   "limit 10 offset 0";
-            var board_photo = "select from_id, concat(path,'/', photoname,file_type) as photoURL "+
+            var board_photo = "select from_id, path as photoURL "+
                               "from photo_datas " +
                               "where from_type ='게시판' and from_id= ?";
 
