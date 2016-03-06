@@ -485,7 +485,7 @@ router.get('/:artist_id/comments', function (req, res, next) {
     }
 
     function selectArtistComments(connection, callback){
-        var artistCommentsql = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+        var artistCommentsql = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
                                       "as 'register_date', content "+
                                "from artist_comments "+
                                "where artist_id=? "+
@@ -530,7 +530,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
         if (req.user.nickname === undefined) {
             var writer_id = req.user.id;
             var writer = req.user.email_id.substring(0,(req.user.email_id.indexOf('@')-3)).concat('***');
-            var writeInfo = [writer_id, writer, content, artist_id]
+            var writeInfo = [writer_id, writer, content, artist_id];
             callback(null,writeInfo);
         }else{
             var err = new Error('아티스트는 한줄평을 쓸 수 없습니다');

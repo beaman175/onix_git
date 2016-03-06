@@ -186,7 +186,7 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
     }
 
     function selectBoardReplies(connection, callback){
-        var boardRepliessql = "select r.writer, date_format(convert_tz(r.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+        var boardRepliessql = "select r.writer_id, r.writer, date_format(convert_tz(r.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
                                       "as 'register_date', r.content " +
                               "from reply r join postboard pb on (pb.id = r.posts_id) " +
                               "where r.posts_id= ?  and pb.id = ? " +
@@ -228,6 +228,7 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
 router.post('/:postBoard_id/posts', function (req, res, next) {
     var postBoard_id = req.params.postBoard_id; //1(QnA), 2(커뮤니티), 3(공지사항)
 
+    var writer_id = req.body.writer; //작성자
     var writer = req.body.writer; //작성자
     var title = req.body.title; // 제목
     var content = req.body.content; // 내용
@@ -249,28 +250,30 @@ router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, 
     var content = req.body.content; // 댓글내용
 
     function checkingUser(callback) {
+        var writer_id = req.user.id;
         if (req.user.nickname === undefined) {
             var writer = req.user.email_id.substring(0, (req.user.email_id.indexOf('@') - 3)).concat('***');
         } else {
             var writer = req.user.nickname;
         }
-        callback(null, writer);
+        var writeInfo = [writer_id, writer, content, post_id];
+        callback(null, writeInfo);
     }
 
-    function getConnection(writer, callback) {
+    function getConnection(writeInfo, callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
                 callback(err);
             } else {
-                callback(null, writer, connection);
+                callback(null, writeInfo, connection);
             }
         });
     }
-    function insertReply (writer, connection, callback){
-        var insertReplySql = "insert into reply(writer,content,posts_id) " +
-                             "values(?,?,?);";
+    function insertReply (writeInfo, connection, callback){
+        var insertReplySql = "insert into reply(writer_id,writer,content,posts_id) " +
+                             "values(?,?,?,?);";
 
-        connection.query(insertReplySql, [writer, content, post_id], function (err) {
+        connection.query(insertReplySql, writeInfo, function (err) {
             if (err) {
                 var err = new Error('댓글을 쓰기에 실패하였습니다.');
                 err.statusCode = -120;
