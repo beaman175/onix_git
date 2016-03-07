@@ -31,7 +31,7 @@ router.get('/', function (req, res, next) {
 
     function selectUserJJim(connection, callback) {
         var pageArr = [userId, listPerPage, (page-1)*listPerPage];
-        var selectShopJJimSql = "select s.id as shop_id, s.name, s.longitude, s.latitude, pd.photoURL " +
+        var selectShopJJimSql = "select s.id as shop_id, s.name as shopName, s.longitude, s.latitude, pd.photoURL " +
                                 "from jjim_shops js join (select id, name, longitude, latitude " +
                                                          "from shop) s " +
                                                    "on (js.shop_id = s.id) " +
@@ -43,7 +43,7 @@ router.get('/', function (req, res, next) {
                                 "where customer_id =? " +
                                 "LIMIT ? OFFSET ?";
 
-        var selectArtistJJimSql = "select a.id as artist_id, a.nickname, a.discount, pd.photoURL " +
+        var selectArtistJJimSql = "select a.id as artist_id, a.nickname as artistNickname, a.discount, pd.photoURL " +
                                   "from jjim_artists ja join (select id, nickname, discount " +
                                                              "from artist) a " +
                                                        "on (a.id = ja.artist_id) " +
