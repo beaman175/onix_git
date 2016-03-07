@@ -27,6 +27,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
   var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
   postBoard_id = (postBoard_id > 3 || postBoard_id < 0) ? 1 : postBoard_id;
 
+/*
   if (postBoard_id === 3) {
     var boardName = '공지사항';
   } else if (postBoard_id === 2) {
@@ -34,6 +35,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
   } else {
     var boardName = 'QnA';
   }
+*/
 
   var page = req.query.page;
   page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
@@ -52,7 +54,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   //게시글 목록을 select
   function selectBoards(connection, callback) {
-    var boards_sql = "select pbd.id as board_id, p.id, p.writer_id, p.writer, " +
+    var boards_sql = "select pbd.id as board_id, pbd.name as boardName p.id, p.writer_id, p.writer, " +
       "                      date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') as 'register_date', " +
       "                      p.title, p.content " +
       "               from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
@@ -137,6 +139,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     async.eachSeries(board_results, function (item, cb) {
       var post_element = {
         "post_id": item.id,
+        "boardName" :item.boardName,
         "writer_id": item.writer_id,
         "writer": item.writer,
         "date": item.register_date,
