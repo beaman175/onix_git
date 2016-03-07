@@ -64,12 +64,12 @@ module.exports = function (passport) {
 
       if (user_type === 1) {
         var sql = "SELECT id, email_id, password " +
-          "FROM customer " +
-          "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+          "        FROM customer " +
+          "        WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
       } else if (user_type === 2) {
         var sql = "SELECT id, email_id, password " +
-          "FROM artist " +
-          "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+          "        FROM artist " +
+          "        WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
       } else {
         var err = new Error("사용자가 존재하지 않습니다...");
         err.statusCode = -104;
@@ -81,7 +81,6 @@ module.exports = function (passport) {
         if (err) {
           callback(err);
         } else {
-          //TODO: 5. 사용자가 요청한 username이 있는지 검사한다.
           if (results.length === 0) {
             var err = new Error('사용자가 존재하지 않습니다...');
             err.statusCode = -104;

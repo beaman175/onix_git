@@ -141,23 +141,16 @@ router.get('/', function (req, res, next) {
     //아티스트 목록을 select
     function selectArtists(connection, callback) {
 
-/*
-        var artist_sql = "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
-                                 "a.discount, intro, a.shop_id "+
-                          "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
-                                                   "from jjim_artists "+
-                                                   "group by artist_id)ja "+
-                                         "on (ja.artist_id = a.id) ";
-*/
         var artist_sql = "select a.id as artist_id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
-                                "a.discount, intro, a.shop_id, pd.path as artistProfilePhoto "+
+                                "a.discount, intro, a.shop_id, pd.artistProfilePhoto "+
                          "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                   "from jjim_artists "+
                                                   "group by artist_id)ja "+
                                        "on (ja.artist_id = a.id) " +
-                                       "left join (select from_id, path " +
+                                       "left join (select from_id, path as artistProfilePhoto " +
                                                   "from photo_datas " +
-                                                  "where from_type ='프로필') pd " +
+                                                  "where from_type ='프로필' " +
+                                                  "limit 0,1) pd " +
                                        "on (a.id = pd.from_id) ";
         if(search != undefined){
             var finding = "where a.nickname like " + '"%'+search+'%"';
@@ -196,7 +189,7 @@ router.get('/', function (req, res, next) {
                                                     "on (sv.artist_id = a.id) " +
                                       "where a.id = ?" ;
 
-            var artist_comments_sql = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+            var artist_comments_sql = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
                                       "as 'register_date', content " +
                                       "from artist_comments ac "+
                                       "where ac.artist_id= ? " +
@@ -206,7 +199,7 @@ router.get('/', function (req, res, next) {
                                                   "where customer_id =? and artist_id =?";
 
             async.series([function (cb2) {
-                connection.query(artist_photo_sql, item.id, function (err, artist_photo_results) {
+                connection.query(artist_photo_sql, item.artist_id, function (err, artist_photo_results) {
                     if (err) {
                         cb2(err);
                     } else {
@@ -225,7 +218,7 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                connection.query(artsit_services_sql, item.id, function (err, artist_services_results) {
+                connection.query(artsit_services_sql, item.artist_id, function (err, artist_services_results) {
                     if (err) {
                         cb2(err);
                     } else {
@@ -234,7 +227,7 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                connection.query(artist_comments_sql, item.id, function (err, artist_comments_results) {
+                connection.query(artist_comments_sql, item.artist_id, function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
                     } else {
@@ -243,7 +236,7 @@ router.get('/', function (req, res, next) {
                     }
                 });
             }, function (cb2) {
-                connection.query(artist_customer_jjim_status_sql, [userId, item.id], function (err, artist_comments_results) {
+                connection.query(artist_customer_jjim_status_sql, [userId, item.artist_id], function (err, artist_comments_results) {
                     if (err) {
                         cb2(err);
                     } else {
@@ -327,7 +320,6 @@ router.get('/:artist_id', function (req, res, next) {
         }
     }
 
-
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
@@ -339,18 +331,13 @@ router.get('/:artist_id', function (req, res, next) {
     }
 
     function selectArtistsDetail(connection, callback) {
-        var artist_sql = "select a.id as artist_id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
-            "                    a.discount, intro, a.shop_id, pd.path as artistProfilePhoto " +
-            "                           on (ja.artist_id = a.id) " +
-            "                           left join (select from_id, path " +
-            "                                      from photo_datas " +
-            "                                      where from_type ='프로필' and from_id = ?) pd " +
+        var artist_pick_sql = "select a.id as artist_id, a.nickname, "+
+            "                         a.discount, intro, a.shop_id, pd.path as artistProfilePhoto " +
+            "                  from artist a left join (select from_id, path " +
+            "                                           from photo_datas " +
+            "                                           where from_type ='프로필' and from_id = ?) pd " +
             "                           on (a.id = pd.from_id) " +
-            "              where a.id = ?";
-
-        var artist_pick_sql = "select id, nickname, discount,intro, shop_id "+
-                              "from artist "+
-                              "where id=?";
+            "                  where a.id = ?";
 
         var artist_pick_photo_sql = "select path as photoURL " +
                                     "from photo_datas pd " +
@@ -362,7 +349,7 @@ router.get('/:artist_id', function (req, res, next) {
                                                      "on (sv.artist_id = a.id) " +
                                        "where a.id = ?" ;
 
-        var artist_pick_comments = "select writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+        var artist_pick_comments = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
                                            "as 'register_date', content " +
                                    "from artist_comments "+
                                    "where artist_id= ? " +
@@ -373,7 +360,7 @@ router.get('/:artist_id', function (req, res, next) {
                                               "where customer_id =? and artist_id =?";
 
         async.waterfall([function (cb) {
-            connection.query(artist_pick_sql, artist_id, function (err, artist_pick_results) {
+            connection.query(artist_pick_sql, [artist_id,artist_id],function (err, artist_pick_results) {
                 if (err) {
                     cb(err);
                 } else {

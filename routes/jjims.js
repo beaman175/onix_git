@@ -18,6 +18,7 @@ router.get('/', function (req, res, next) {
             callback(err);
         }
     }
+
     function getConnection(callback) {
         pool.getConnection(function (err, connection) {
             if (err) {

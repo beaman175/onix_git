@@ -65,12 +65,12 @@ router.get('/', function (req, res, next) {
         var idx = 0; //인덱스
 
         async.eachSeries(shop_results, function(item,cb){
-            var shop_photo_sql = "select concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+            var shop_photo_sql = "select pd.path as photoURL "+
                                  "from photo_datas pd "+
                                  "where pd.from_type ='샵' and pd.from_id =?";
 
             var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                      "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+                                      "pd.path as photoURL "+
                                       "from artist a left join(select id " +
                                                               "from shop) s "+
                                                     "on (a.shop_id = s.id)" +
@@ -80,7 +80,7 @@ router.get('/', function (req, res, next) {
                                                     "on (ja.artist_id = a.id) "+
                                                     "left join (select id,from_id,path,photoname,file_type "+
                                                                "from photo_datas "+
-                                                               "where from_type = '아티스트' " +
+                                                               "where from_type = '프로필' " +
                                                                "group by from_id) pd "+
                                                     "on (pd.from_id = a.id)" +
                                       "where s.id = ?";
@@ -94,8 +94,23 @@ router.get('/', function (req, res, next) {
                     if (err) {
                         cb2(err);
                     } else {
-                        shop_results[idx].photoURL = shop_photo_results;
-                        cb2(null);
+                        if (shop_photo_results.length) {
+                            var shop_photo_URL = [];
+                            async.eachSeries(shop_photo_results, function (urlValue, cb3) {
+                                shop_photo_URL.push(urlValue.photoURL);
+                                cb3(null);
+                            }, function (err) {
+                                if (err) {
+                                    cb(err);
+                                } else {
+                                    shop_results[idx].photoURL = shop_photo_URL;
+                                    cb2(null);
+                                }
+                            });
+                        } else {
+                            shop_results[idx].photoURL = null;
+                            cb2(null);
+                        }
                     }
                 });
             }, function (cb2) {
@@ -183,8 +198,6 @@ router.get('/', function (req, res, next) {
 
 
 
-
-
 //11.샵 상세 조회
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
@@ -207,20 +220,19 @@ router.get('/:shop_id', function (req, res, next) {
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
 
-        var shop_pick_sql = "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-                            "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts " +
+        var shop_pick_sql = "select s.id,s.name, s.address,s.longitude, s.latitude, s.callnumber, s.usetime, "+
+                                   "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
                             "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
-                                                   "from jjim_shops " +
-                                                   "where shop_id = ? )js " +
-                                        "on (js.shop_id = s.id) " +
-                            "where shop_id=?";
+                                                   "from jjim_shops)js " +
+                                        "on (js.shop_id = s.id) "+
+                            "where s.id=? ";
 
-        var shop_pick_photo_sql = "select from_id,concat(pd.path,'/',pd.photoname,file_type) as phtoURL " +
+        var shop_pick_photo_sql = "select pd.path as photoURL " +
                                   "from photo_datas pd " +
                                   "where pd.from_type ='샵' and pd.from_id =?";
 
-        var shop_pick_artists_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                     "concat(pd.path,'/',pd.photoname,file_type) as photoURL "+
+        var shop_pick_artists_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
+                                     "pd.path as artistProfilePhoto "+
                                      "from artist a left join(select id " +
                                                              "from shop) s "+
                                                    "on (a.shop_id = s.id)" +
@@ -228,10 +240,10 @@ router.get('/:shop_id', function (req, res, next) {
                                                              "from jjim_artists "+
                                                              "group by artist_id) ja "+
                                                    "on (ja.artist_id = a.id) "+
-                                                   "left join (select id,from_id,path,photoname,file_type "+
+                                                   "left join (select from_id, path "+
                                                               "from photo_datas "+
-                                                              "where from_type = '아티스트' " +
-                                                              "group by from_id) pd "+
+                                                              "where from_type = '프로필' " +
+                                                              "limit 0,1) pd "+
                                                     "on (pd.from_id = a.id)" +
                                                     "where s.id = ?";
 
@@ -240,7 +252,7 @@ router.get('/:shop_id', function (req, res, next) {
                                      "where customer_id =? and shop_id =? ";
 
         async.waterfall([function (cb) {
-            connection.query(shop_pick_sql, [shop_id,shop_id], function (err, shopPickResults) {
+            connection.query(shop_pick_sql, [shop_id], function (err, shopPickResults) {
                 if (err) {
                     cb(err);
                 } else {
@@ -252,8 +264,23 @@ router.get('/:shop_id', function (req, res, next) {
                 if (err) {
                     cb(err);
                 } else {
-                    shop_pick_results.photoURL = shopPhotoResults;
-                    cb(null, shop_pick_results);
+                    if(shopPhotoResults.length){
+                        var shop_photo_URL = [];
+                        async.eachSeries(shopPhotoResults, function (urlValue, cb2) {
+                            shop_photo_URL.push(urlValue.photoURL);
+                            cb2(null);
+                        }, function (err) {
+                            if (err) {
+                                cb(err);
+                            } else {
+                                shop_pick_results.photoURL = shop_photo_URL;
+                                cb(null,shop_pick_results);
+                            }
+                        });
+                    }else{
+                        shop_pick_results.photoURL = null;
+                        cb(null, shop_pick_results);
+                    }
                 }
             });
         }, function (shop_pick_results, cb) {
@@ -262,7 +289,7 @@ router.get('/:shop_id', function (req, res, next) {
                     cb(err);
                 } else {
                     shop_pick_results.attArtists = shopInArtistResults;
-                    cb(null,shop_pick_results);
+                    cb(null, shop_pick_results);
                 }
             });
         }, function (shop_pick_results, cb) {
@@ -289,7 +316,7 @@ router.get('/:shop_id', function (req, res, next) {
                 "message": "해당 샵에 정보가 조회되었습니다.",
                 "name": shop_pick_results[0].name,
                 "address": shop_pick_results[0].address,
-                "jjim_counts": shop_pick_results[0].shop_jjim_counts,
+                "shopjjim_counts": shop_pick_results[0].shop_jjim_counts,
                 "jjim_status": shop_pick_results[0].jjim_status,
                 "longitude": shop_pick_results[0].longitude,
                 "latitude": shop_pick_results[0].latitude,
