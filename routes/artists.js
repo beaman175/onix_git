@@ -141,7 +141,7 @@ router.get('/', function (req, res, next) {
     //아티스트 목록을 select
     function selectArtists(connection, callback) {
 
-        var artist_sql = "select a.id as artist_id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
+        var artist_sql = "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, "+
                                 "a.discount, intro, a.shop_id, pd.artistProfilePhoto "+
                          "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts "+
                                                   "from jjim_artists "+
@@ -331,8 +331,8 @@ router.get('/:artist_id', function (req, res, next) {
     }
 
     function selectArtistsDetail(connection, callback) {
-        var artist_pick_sql = "select a.id as artist_id, a.nickname, "+
-            "                         a.discount, intro, a.shop_id, pd.path as artistProfilePhoto " +
+        var artist_pick_sql = "select a.id as artist_id, a.nickname as artistNickname, "+
+            "                         a.discount, a.intro, a.shop_id, pd.path as artistProfilePhoto " +
             "                  from artist a left join (select from_id, path " +
             "                                           from photo_datas " +
             "                                           where from_type ='프로필' and from_id = ?) pd " +
@@ -429,8 +429,8 @@ router.get('/:artist_id', function (req, res, next) {
         var result = {
             "successResult": {
                 "message": "해당 아티스트 페이지 입니다",
-                "artist_id": artist_pick_results[0].id,
-                "nickname": artist_pick_results[0].nickname,
+                "artist_id": artist_pick_results[0].artist_id,
+                "artistNickname": artist_pick_results[0].artistNickname,
                 "discount": artist_pick_results[0].discount,
                 "intro": artist_pick_results[0].intro,
                 "jjim_status": artist_pick_results[0].jjim_status,

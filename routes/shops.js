@@ -69,8 +69,8 @@ router.get('/', function (req, res, next) {
                                  "from photo_datas pd "+
                                  "where pd.from_type ='샵' and pd.from_id =?";
 
-            var shop_in_artist_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                      "pd.path as photoURL "+
+            var shop_in_artist_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
+                                      "a.intro  ,pd.path as photoURL "+
                                       "from artist a left join(select id " +
                                                               "from shop) s "+
                                                     "on (a.shop_id = s.id)" +
@@ -158,7 +158,7 @@ router.get('/', function (req, res, next) {
         async.eachSeries(shop_results, function(item, cb){
             var shop_element= {
                 "shop_id": item.id,
-                "name": item.name,
+                "shopName": item.name,
                 "address": item.address,
                 "shop_jjim_counts": item.shop_jjim_counts,
                 "jjim_status": item.jjim_status,
@@ -231,8 +231,8 @@ router.get('/:shop_id', function (req, res, next) {
                                   "from photo_datas pd " +
                                   "where pd.from_type ='샵' and pd.from_id =?";
 
-        var shop_pick_artists_sql =  "select a.id, a.nickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
-                                     "pd.path as artistProfilePhoto "+
+        var shop_pick_artists_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
+                                     "a.intro , pd.path as artistProfilePhoto "+
                                      "from artist a left join(select id " +
                                                              "from shop) s "+
                                                    "on (a.shop_id = s.id)" +
@@ -314,7 +314,8 @@ router.get('/:shop_id', function (req, res, next) {
         var result = {
             "successResult": {
                 "message": "해당 샵에 정보가 조회되었습니다.",
-                "name": shop_pick_results[0].name,
+                "shop_id" : shop_pick_results[0].id,
+                "shopName": shop_pick_results[0].name,
                 "address": shop_pick_results[0].address,
                 "shopjjim_counts": shop_pick_results[0].shop_jjim_counts,
                 "jjim_status": shop_pick_results[0].jjim_status,
