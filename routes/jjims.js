@@ -49,7 +49,7 @@ router.get('/', function (req, res, next) {
                                                        "on (a.id = ja.artist_id) " +
                                                        "left join (select from_id, path as photoURL " +
                                                                   "from photo_datas " +
-                                                                  "where from_type ='프로필'" +
+                                                                  "where from_type ='아티스트'" +
                                                                   "limit 0,1) pd " +
                                                        "on (pd.from_id = a.id) " +
                                   "where ja.customer_id = ? " +

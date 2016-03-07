@@ -56,7 +56,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
     async.each(saleResults, function (item, cb) {
       var elementsSales = {
         "artist_id": item.id,
-        "artist_nickname": item.nickname,
+        "artistNickname": item.nickname,
         "artistProfilePhoto": item.artistProfilePhoto,
         "register_date": item.register_date,
         "validdate": item.validdate,
