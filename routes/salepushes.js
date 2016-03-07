@@ -32,7 +32,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
   }
 
   function selectSalePushes(connection, callback) {
-    var salepushSql = "select a.id, sm.register_date, sm.validdate, a.nickname, a.discount, pd.path as artistProfilePhoto" +
+    var salepushSql = "select a.id as artist_id, sm.register_date, sm.validdate, a.nickname as artistNickname, a.discount, pd.path as artistProfilePhoto" +
       "                from salepushmsg sm join (select id, discount,nickname " +
       "                                        from artist) a " +
       "                                  on (a.id= sm.artist_id) " +
@@ -55,8 +55,8 @@ router.get('/', isLoggedIn, function (req, res, next) {
     var saleMsgResult = [];
     async.each(saleResults, function (item, cb) {
       var elementsSales = {
-        "artist_id": item.id,
-        "artistNickname": item.nickname,
+        "artist_id": item.artist_id,
+        "artistNickname": item.artistNickname,
         "artistProfilePhoto": item.artistProfilePhoto,
         "register_date": item.register_date,
         "validdate": item.validdate,
