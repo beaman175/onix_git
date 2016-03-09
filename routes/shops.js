@@ -30,21 +30,24 @@ router.get('/', function (req, res, next) {
 
     //샵 목록을 select
     function selectshops(connection, callback) {
-        var referrals = "order by shop_jjim_counts desc"; // 추천순
-        var finding = "where s.name = " +search;
 
-        var shop_sql =  "select s.id,s.name,s.address,s.longitude, s.latitude, s.callnumber, s.usetime, " +
-                               "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
-                        "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
+        var shop_sql =  "select s.id as shop_id, s.name as shopName, s.longitude, s.latitude, "+
+                               "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts, pd.mainPhoto "+
+                        "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
                                                "from jjim_shops "+
-                                               "group by shop_id)js " +
-                                     "on (js.shop_id = s.id) ";
+                                               "group by shop_id)js "+
+                                    "on (js.shop_id = s.id) "+
+                                    "left join (select from_id, path as mainPhoto "+
+                                               "from photo_datas "+
+                                               "where from_type = '샵' " +
+                                               "LIMIT 0,1) pd "+
+                                    "on(pd.from_id = s.id) ";
 
         if(search != undefined){
-            var finding = "where a.nickname like " + '"%'+search+'%"';
+            var finding = "where s.name like " + '"%'+search+'%"';
             shop_sql += finding
         }else if(condition==='추천순') {
-            var referrals = " order by artist_jjim_counts desc"; // 추천순
+            var referrals = " order by shop_jjim_counts desc"; // 추천순
             shop_sql += referrals;
         }
         shop_sql += " LIMIT ? OFFSET ?";
@@ -53,141 +56,29 @@ router.get('/', function (req, res, next) {
         var pageArr = [listPerPage, (page-1)*listPerPage];
 
         connection.query(shop_sql, pageArr, function (err, shop_results) {
+            connection.release();
             if (err) {
                 callback(err);
             } else {
-                callback(null, connection, shop_results);
-            }
-        });
-    }
-    //샵 사진과 소속 아티스트들을 가져온다
-    function selectShopDetails(connection, shop_results, callback) {
-        var idx = 0; //인덱스
-
-        async.eachSeries(shop_results, function(item,cb){
-            var shop_photo_sql = "select pd.path as photoURL "+
-                                 "from photo_datas pd "+
-                                 "where pd.from_type ='샵' and pd.from_id =?";
-
-            var shop_in_artist_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-                                      "a.intro  ,pd.path as photoURL "+
-                                      "from artist a left join(select id " +
-                                                              "from shop) s "+
-                                                    "on (a.shop_id = s.id)" +
-                                                    "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
-                                                              "from jjim_artists "+
-                                                              "group by artist_id) ja "+
-                                                    "on (ja.artist_id = a.id) "+
-                                                    "left join (select id,from_id,path,photoname,file_type "+
-                                                               "from photo_datas "+
-                                                               "where from_type = '프로필' " +
-                                                               "group by from_id) pd "+
-                                                    "on (pd.from_id = a.id)" +
-                                      "where s.id = ?";
-
-            var shop_customer_jjim_sql = "select customer_id, shop_id " +
-                                         "from jjim_shops " +
-                                         "where customer_id =? and shop_id =? ";
-
-            async.series([function (cb2) {
-                connection.query(shop_photo_sql, item.id, function (err, shop_photo_results) {
-                    if (err) {
-                        cb2(err);
-                    } else {
-                        if (shop_photo_results.length) {
-                            var shop_photo_URL = [];
-                            async.eachSeries(shop_photo_results, function (urlValue, cb3) {
-                                shop_photo_URL.push(urlValue.photoURL);
-                                cb3(null);
-                            }, function (err) {
-                                if (err) {
-                                    cb(err);
-                                } else {
-                                    shop_results[idx].photoURL = shop_photo_URL;
-                                    cb2(null);
-                                }
-                            });
-                        } else {
-                            shop_results[idx].photoURL = null;
-                            cb2(null);
-                        }
-                    }
-                });
-            }, function (cb2) {
-                connection.query(shop_in_artist_sql, item.id, function (err, shopInArtistResults) {
-                    if (err) {
-                        cb2(err);
-                    } else {
-                        shop_results[idx].attArtists = shopInArtistResults;
-                        cb2(null);
-                    }
-                });
-            }, function (cb2) {
-                connection.query(shop_customer_jjim_sql, [userId ,item.id], function (err, customerJJimResult) {
-                    if (err) {
-                        cb2(err);
-                    } else {
-                        shop_results[idx].jjim_status = (customerJJimResult.length !== 0) ? 1 : 0 ;
-                        cb2(null);
-                    }
-                });
-            }], function (err) {
-                if (err) {
-                    cb(err);
-                } else {
-                    idx++;
-                    cb(null);
-                }
-            });
-
-        }, function (err) {
-            if (err) {
-                callback(err);
-            } else {
-                connection.release();
                 callback(null, shop_results);
             }
         });
     }
-
 
     //JSON 객체 생성
     function resultJSON(shop_results, callback) {
-        var shopList=[];
-
-        async.eachSeries(shop_results, function(item, cb){
-            var shop_element= {
-                "shop_id": item.id,
-                "shopName": item.name,
-                "address": item.address,
-                "shop_jjim_counts": item.shop_jjim_counts,
-                "jjim_status": item.jjim_status,
-                "longitude": item.longitude,
-                "latitude": item.latitude,
-                "callnumber": item.callnumber,
-                "usetime": item.usetime,
-                "photoURL" : item.photoURL,
-                "attArtists" : item.attArtists
-            };
-            shopList.push(shop_element);
-            cb(null);
-        }, function(err) {
-            if (err) {
-                callback(err);
-            } else {
-                var shop_results = {
-                    "successResult": {
-                        "message": "모든 샵이 정상적으로 조회 되었습니다.",
-                        "page": page,
-                        "listPerPage": listPerPage,
-                        "shopList": shopList
-                    }
-                };
-                callback(null, shop_results);
+        var shop_results = {
+            "successResult": {
+                "message": "모든 샵이 정상적으로 조회 되었습니다.",
+                "page": page,
+                "listPerPage": listPerPage,
+                "shopList": shop_results
             }
-        });
+        };
+        callback(null, shop_results);
     }
-    async.waterfall([getConnection, selectshops,selectShopDetails,  resultJSON], function (err, results) {
+
+    async.waterfall([getConnection, selectshops, resultJSON], function (err, results) {
         if (err) {
             next(err);
         } else {
@@ -220,11 +111,9 @@ router.get('/:shop_id', function (req, res, next) {
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
 
-        var shop_pick_sql = "select s.id,s.name, s.address,s.longitude, s.latitude, s.callnumber, s.usetime, "+
-                                   "ifnull(js.shop_jjim_counts,0) as shop_jjim_counts "+
-                            "from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
-                                                   "from jjim_shops)js " +
-                                        "on (js.shop_id = s.id) "+
+        var shop_pick_sql = "select s.id as shop_id ,s.name as shopName, s.address,s.longitude, " +
+                                   "s.latitude, s.callnumber, s.usetime "+
+                            "from shop s "+
                             "where s.id=? ";
 
         var shop_pick_photo_sql = "select pd.path as photoURL " +
@@ -314,10 +203,9 @@ router.get('/:shop_id', function (req, res, next) {
         var result = {
             "successResult": {
                 "message": "해당 샵에 정보가 조회되었습니다.",
-                "shop_id" : shop_pick_results[0].id,
-                "shopName": shop_pick_results[0].name,
+                "shop_id" : shop_pick_results[0].shop_id,
+                "shopName": shop_pick_results[0].shopName,
                 "address": shop_pick_results[0].address,
-                "shopjjim_counts": shop_pick_results[0].shop_jjim_counts,
                 "jjim_status": shop_pick_results[0].jjim_status,
                 "longitude": shop_pick_results[0].longitude,
                 "latitude": shop_pick_results[0].latitude,
