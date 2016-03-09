@@ -88,7 +88,6 @@ router.get('/', function (req, res, next) {
 });
 
 
-
 //11.샵 상세 조회
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
@@ -226,4 +225,6 @@ router.get('/:shop_id', function (req, res, next) {
         }
     });
 });
+
+
 module.exports = router;

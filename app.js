@@ -38,7 +38,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(session({
-  //"sevret": process.env.SERVER_KEY,// 원래는 이렇게 잡아야한다....
+  //"secret": process.env.SERVER_KEY,// 원래는 이렇게 잡아야한다....
   "secret": "GCDjbIY9JsF4XSI/005Qa+SsHZQS6zxPeUmSHOHKoOA=", // 서버만 가지고 있는 정보 (openssl)
   "cookie": {"maxAge": 86400000}, //유지기간 60*60*24*365*1000  = 1년
   "resave": true,

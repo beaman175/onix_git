@@ -20,7 +20,7 @@ router.post('/logout', function(req, res, next) {
     "successResult": {
       "message": "로그아웃 되었습니다..."
     }
-  })
+  });
 });
 
 router.get('/me', isLoggedIn, function (req, res, next) {
