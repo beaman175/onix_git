@@ -54,18 +54,18 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   //게시글 목록을 select
   function selectBoards(connection, callback) {
-    var boards_sql = "select pbd.id as board_id, pbd.name as boardName p.id, p.writer_id, p.writer, " +
-      "                      date_format(convert_tz(p.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') as 'register_date', " +
-      "                      p.title, p.content " +
-      "               from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
-      "                                        from posts) p " +
-      "                                  on (p.postboard_id = pbd.id)" +
-      "                                  left join (select from_id, path " +
-      "                                             from photo_datas " +
-      "                                             where from_type ='게시판'  " +
-      "                                             limit 0,1) pd " +
-      "                                  on (pbd.id = pd.from_id) " +
-      "               where pbd.id = ? ";
+    var boards_sql = "select pbd.name as boardName, p.id as post_id, p.writer_id, p.writer, "+
+    "                        date_format(CONVERT_TZ(p.register_date, '+00:00', '+9:00'), '%Y-%m-%d %H:%i:%s') as register_date, " +
+    "                        pd.path as boardPhoto, p.title, p.content "+
+    "                 from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
+    "                                                 from posts) p " +
+    "                                    on (p.postboard_id = pbd.id) "+
+    "                                    left join (select from_id, path "+
+    "                                               from photo_datas " +
+    "                                               where from_type ='게시판' "+
+    "                                               group by from_id) pd "+
+    "                                    on (p.id = pd.from_id) "+
+    "                 where pbd.id = ? ";
 
     if (search != undefined) {
       var finding = "and p.title like " + '"%' + search + '%"';
@@ -89,13 +89,13 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     idx = 0;
     async.eachSeries(board_results, function (item, cb) {
       var boards_comments = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
-        "as 'register_date', content " +
-        "from reply  " +
-        "where posts_id = ?  " +
-        "limit 10 offset 0";
+        "                           as register_date, content " +
+        "                    from reply  " +
+        "                    where posts_id = ?  " +
+        "                    limit 10 offset 0";
       var board_photo = "select from_id, path as photoURL " +
-        "from photo_datas " +
-        "where from_type ='게시판' and from_id= ?";
+        "                from photo_datas " +
+        "                where from_type ='게시판' and from_id= ?";
 
       async.series([function (cb2) {
         connection.query(boards_comments, item.id, function (err, board_replies_results) {
@@ -142,10 +142,10 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
         "boardName" :item.boardName,
         "writer_id": item.writer_id,
         "writer": item.writer,
-        "date": item.register_date,
+        "register_date": item.register_date,
         "title": item.title,
         "content": item.content,
-        "photo": item.photoURL,
+        "boardPhoto": item.photoURL,
         "replies": item.replies
       };
       postList.push(post_element);
@@ -159,7 +159,6 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
             "message": "해당 게시물들이 정상적으로 조회 되었습니다.",
             "page": page,
             "listPerPage": listPerPage,
-            "boardName": boardName,
             "postList": postList
           }
         };
