@@ -19,7 +19,7 @@ var boards = require('./routes/boards');
 var jjims = require('./routes/jjims');
 var salepushes = require('./routes/salepushes');
 var shops = require('./routes/shops');
-var login = require('./routes/login');
+var auth = require('./routes/auth');
 
 var scheduleFlag = true;
 
@@ -71,7 +71,7 @@ app.use('/shops', shops);
 app.use('/artists', artists);
 app.use('/customers', customers);
 app.use('/boards', boards);
-app.use('/login', login);
+app.use('/auth', auth);
 app.use('/jjims', jjims);
 app.use('/salepushes', salepushes);
 
