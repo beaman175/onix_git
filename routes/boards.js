@@ -27,16 +27,6 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
   var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
   postBoard_id = (postBoard_id > 3 || postBoard_id < 0) ? 1 : postBoard_id;
 
-/*
-  if (postBoard_id === 3) {
-    var boardName = '공지사항';
-  } else if (postBoard_id === 2) {
-    var boardName = '커뮤니티';
-  } else {
-    var boardName = 'QnA';
-  }
-*/
-
   var page = req.query.page;
   page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
 
@@ -71,7 +61,8 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
       var finding = "and p.title like " + '"%' + search + '%"';
       boards_sql += finding;
     }
-    boards_sql += " LIMIT ? OFFSET ?";
+      boards_sql += "order by register_date desc " +
+                    "LIMIT ? OFFSET ?";
 
     var pageArr = [postBoard_id, listPerPage, (page - 1) * listPerPage];
 
@@ -310,7 +301,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
                       if (err) {
                         connection.rollback();
                         connection.release();
-                        console.log('에러2');
                         var err = new Error('게시글 쓰기에 실패하였습니다.');
                         err.statusCode = -120;
                         cb(err);
@@ -325,12 +315,10 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
           }
 
           async.waterfall([insertPost, insertPostPhoto], function (err) {
-            connection.release();
             if (err) {
-              console.log('에러3');
               callback(err);
             } else {
-              callback(null);
+              callback(null, connection);
             }
           });
         });
@@ -338,10 +326,12 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     });
   }
 
-  async.waterfall([getConnection, insertPost], function (err) {
+  async.waterfall([getConnection, insertPost], function (err, connection) {
     if (err) {
       next(err);
     } else {
+      connection.commit();
+      connection.release();
       var result = {
         "successResult": {
           "message": "게시글이 정상적으로 게시되었습니다."
