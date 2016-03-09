@@ -108,36 +108,15 @@ router.get('/:shop_id', function (req, res, next) {
             }
         });
     }
+
     //해당 샵 목록을 select
     function selectPickShopDetails(connection, callback) {
 
-        var shop_pick_sql = "select s.id as shop_id ,s.name as shopName, s.address,s.longitude, " +
-                                   "s.latitude, s.callnumber, s.usetime "+
-                            "from shop s "+
-                            "where s.id=? ";
-
-        var shop_pick_photo_sql = "select pd.path as photoURL " +
-                                  "from photo_datas pd " +
-                                  "where pd.from_type ='샵' and pd.from_id =?";
-
-        var shop_pick_artists_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
-                                     "a.intro , pd.path as artistProfilePhoto "+
-                                     "from artist a left join(select artist_id, count(customer_id) as artist_jjim_counts "+
-                                                             "from jjim_artists "+
-                                                             "group by artist_id) ja "+
-                                                   "on (ja.artist_id = a.id) "+
-                                                   "left join (select from_id, path "+
-                                                              "from photo_datas "+
-                                                              "where from_type = '프로필' " +
-                                                              "limit 0,1) pd "+
-                                                    "on (pd.from_id = a.id)" +
-                                     "where a.shop_id = ?";
-
-        var shop_customer_jjim_sql = "select customer_id, shop_id " +
-                                     "from jjim_shops " +
-                                     "where customer_id =? and shop_id =? ";
-
-        async.waterfall([function (cb) {
+        function selectShopPick (cb) {
+            var shop_pick_sql = "select s.id as shop_id ,s.name as shopName, s.address,s.longitude, " +
+                                       "s.latitude, s.callnumber, s.usetime "+
+                                "from shop s "+
+                                "where s.id=? ";
             connection.query(shop_pick_sql, [shop_id], function (err, shopPickResults) {
                 if (err) {
                     cb(err);
@@ -145,7 +124,11 @@ router.get('/:shop_id', function (req, res, next) {
                     cb(null,shopPickResults);
                 }
             });
-        }, function (shop_pick_results, cb) {
+        }
+        function selectShopPickPhoto (shop_pick_results, cb) {
+            var shop_pick_photo_sql = "select pd.path as photoURL " +
+                                      "from photo_datas pd " +
+                                      "where pd.from_type ='샵' and pd.from_id =?";
             connection.query(shop_pick_photo_sql, shop_id, function (err, shopPhotoResults) {
                 if (err) {
                     cb(err);
@@ -169,7 +152,22 @@ router.get('/:shop_id', function (req, res, next) {
                     }
                 }
             });
-        }, function (shop_pick_results, cb) {
+        }
+        function selectShopPickArtists (shop_pick_results, cb) {
+
+            var shop_pick_artists_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
+                                                "a.intro , pd.path as artistProfilePhoto "+
+                                         "from artist a left join(select artist_id, count(customer_id) as artist_jjim_counts "+
+                                                                 "from jjim_artists "+
+                                                                 "group by artist_id) ja "+
+                                                       "on (ja.artist_id = a.id) "+
+                                                       "left join (select from_id, path "+
+                                                                  "from photo_datas "+
+                                                                  "where from_type = '프로필' " +
+                                                                  "limit 0,1) pd "+
+                                                       "on (pd.from_id = a.id)" +
+                                         "where a.shop_id = ?";
+
             connection.query(shop_pick_artists_sql, shop_id, function (err, shopInArtistResults) {
                 if (err) {
                     cb(err);
@@ -178,7 +176,11 @@ router.get('/:shop_id', function (req, res, next) {
                     cb(null, shop_pick_results);
                 }
             });
-        }, function (shop_pick_results, cb) {
+        }
+        function selectShopPickJJimStatus (shop_pick_results, cb) {
+            var shop_customer_jjim_sql = "select customer_id, shop_id " +
+                                         "from jjim_shops " +
+                                         "where customer_id =? and shop_id =? ";
             connection.query(shop_customer_jjim_sql, [userId ,shop_id], function (err, customerJJimResult) {
                 if (err) {
                     cb(err);
@@ -187,7 +189,9 @@ router.get('/:shop_id', function (req, res, next) {
                     cb(null,shop_pick_results);
                 }
             });
-        }], function (err, shop_pick_results) {
+        }
+
+        async.waterfall([selectShopPick , selectShopPickPhoto , selectShopPickArtists, selectShopPickJJimStatus], function (err, shop_pick_results) {
             if (err) {
                 callback(err);
             } else {
