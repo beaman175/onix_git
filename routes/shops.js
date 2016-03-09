@@ -122,10 +122,7 @@ router.get('/:shop_id', function (req, res, next) {
 
         var shop_pick_artists_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
                                      "a.intro , pd.path as artistProfilePhoto "+
-                                     "from artist a left join(select id " +
-                                                             "from shop) s "+
-                                                   "on (a.shop_id = s.id)" +
-                                                   "left join(select artist_id, count(customer_id) as artist_jjim_counts "+
+                                     "from artist a left join(select artist_id, count(customer_id) as artist_jjim_counts "+
                                                              "from jjim_artists "+
                                                              "group by artist_id) ja "+
                                                    "on (ja.artist_id = a.id) "+
@@ -134,7 +131,7 @@ router.get('/:shop_id', function (req, res, next) {
                                                               "where from_type = '프로필' " +
                                                               "limit 0,1) pd "+
                                                     "on (pd.from_id = a.id)" +
-                                                    "where s.id = ?";
+                                     "where a.shop_id = ?";
 
         var shop_customer_jjim_sql = "select customer_id, shop_id " +
                                      "from jjim_shops " +
