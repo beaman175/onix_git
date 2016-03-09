@@ -40,7 +40,7 @@ router.get('/', function (req, res, next) {
                                     "left join (select from_id, path as mainPhoto "+
                                                "from photo_datas "+
                                                "where from_type = '샵' " +
-                                               "LIMIT 0,1) pd "+
+                                               "group by from_id) pd "+
                                     "on(pd.from_id = s.id) ";
 
         if(search != undefined){
@@ -120,11 +120,15 @@ router.get('/:shop_id', function (req, res, next) {
                 if (err) {
                     cb(err);
                 } else {
-                    cb(null,shopPickResults);
+                    if(shopPickResults.length === 0){
+                        cb(new Error('해당 샵은 존재하지 않습니다'));
+                    } else {
+                        cb(null, shopPickResults);
+                    }
                 }
             });
         }
-        function selectShopPickPhoto (shop_pick_results, cb) {
+        function selectShopPickPhoto (shopPickResults, cb) {
             var shop_pick_photo_sql = "select pd.path as photoURL " +
                                       "from photo_datas pd " +
                                       "where pd.from_type ='샵' and pd.from_id =?";
@@ -141,18 +145,18 @@ router.get('/:shop_id', function (req, res, next) {
                             if (err) {
                                 cb(err);
                             } else {
-                                shop_pick_results.photoURL = shop_photo_URL;
-                                cb(null,shop_pick_results);
+                                shopPickResults.photoURL = shop_photo_URL;
+                                cb(null,shopPickResults);
                             }
                         });
                     }else{
-                        shop_pick_results.photoURL = null;
-                        cb(null, shop_pick_results);
+                        shopPickResults.photoURL = null;
+                        cb(null, shopPickResults);
                     }
                 }
             });
         }
-        function selectShopPickArtists (shop_pick_results, cb) {
+        function selectShopPickArtists (shopPickResults, cb) {
 
             var shop_pick_artists_sql =  "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
                                                 "a.intro , pd.path as artistProfilePhoto "+
@@ -163,7 +167,7 @@ router.get('/:shop_id', function (req, res, next) {
                                                        "left join (select from_id, path "+
                                                                   "from photo_datas "+
                                                                   "where from_type = '프로필' " +
-                                                                  "limit 0,1) pd "+
+                                                                  "group by from_id) pd "+
                                                        "on (pd.from_id = a.id)" +
                                          "where a.shop_id = ?";
 
@@ -171,12 +175,12 @@ router.get('/:shop_id', function (req, res, next) {
                 if (err) {
                     cb(err);
                 } else {
-                    shop_pick_results.attArtists = shopInArtistResults;
-                    cb(null, shop_pick_results);
+                    shopPickResults.attArtists = shopInArtistResults;
+                    cb(null, shopPickResults);
                 }
             });
         }
-        function selectShopPickJJimStatus (shop_pick_results, cb) {
+        function selectShopPickJJimStatus (shopPickResults, cb) {
             var shop_customer_jjim_sql = "select customer_id, shop_id " +
                                          "from jjim_shops " +
                                          "where customer_id =? and shop_id =? ";
@@ -184,8 +188,8 @@ router.get('/:shop_id', function (req, res, next) {
                 if (err) {
                     cb(err);
                 } else {
-                    shop_pick_results[0].jjim_status = (customerJJimResult.length !== 0) ? 1 : 0 ;
-                    cb(null,shop_pick_results);
+                    shopPickResults[0].jjim_status = (customerJJimResult.length !== 0) ? 1 : 0 ;
+                    cb(null,shopPickResults);
                 }
             });
         }

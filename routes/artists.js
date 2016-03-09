@@ -254,7 +254,11 @@ router.get('/:artist_id', function (req, res, next) {
         if (err) {
           cb(err);
         } else {
-          cb(null, artist_pick_results);
+          if(artist_pick_results.length === 0){
+            cb(new Error('해당 아티스트는 존재하지 않습니다'));
+          } else {
+            cb(null, artist_pick_results);
+          }
         }
       });
     }
