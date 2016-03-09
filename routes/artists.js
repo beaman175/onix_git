@@ -225,15 +225,15 @@ router.get('/:artist_id', function (req, res, next) {
 
     function selectArtistPick(cb) {
       var artist_pick_sql = "select a.id as artist_id, a.nickname as artistNickname, " +
-        "                           a.discount, a.intro, a.shop_id, pd.path as artistProfilePhoto " +
-        "                    fromartist a left join (select from_id, path "+
-        "                                           from photo_datas "+
-        "                                           where from_type ='프로필' "+
-        "                                           LIMIT 0,1) pd "+
-        "                                 on (a.id = pd.from_id) " +
-        "                                 left join (select id,name " +
+        "                           a.discount, a.intro, a.shop_id, s.shopName, pd.path as artistProfilePhoto " +
+        "                    from artist a left join (select from_id, path "+
+        "                                             from photo_datas "+
+        "                                             where from_type ='프로필' "+
+        "                                             LIMIT 0,1) pd "+
+        "                                  on (a.id = pd.from_id) " +
+        "                                  left join (select id, name as shopName " +
         "                                            from shop) s "+
-        "                                 on (a.shop_id = s.id)  " +
+        "                                  on (a.shop_id = s.id)  " +
         "                    where a.id = ?";
       connection.query(artist_pick_sql, [artist_id], function (err, artist_pick_results) {
         if (err) {
@@ -338,6 +338,7 @@ router.get('/:artist_id', function (req, res, next) {
         "intro": artist_pick_results[0].intro,
         "jjim_status": artist_pick_results[0].jjim_status,
         "shop_id": artist_pick_results[0].shop_id,
+        "shopName" : artist_pick_results[0].shopName,
         "artistProfilePhoto": artist_pick_results[0].artistProfilePhoto,
         "artistPhotos": artist_pick_results.artistPhotos,
         "services": artist_pick_results.services,
