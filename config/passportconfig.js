@@ -1,7 +1,9 @@
 var LocalStrategy = require('passport-local').Strategy;
+var FacebookTokenStrategy = require('passport-facebook-token');
 var bcrypt = require('bcrypt');
 var async = require('async');
 var hexkey = process.env.FMS_SERVER_KEY;
+var authConfig = require('./authconfig');
 
 module.exports = function (passport) {
 
@@ -9,22 +11,27 @@ module.exports = function (passport) {
     done(null, user);
   });
 
-  passport.deserializeUser(function (user,done) { //요청이 있을 때마다 세션에서 id를 가져온다.
+  passport.deserializeUser(function (user, done) { //요청이 있을 때마다 세션에서 id를 가져온다.
     pool.getConnection(function (err, connection) {
       if (err) {
         done(err);
       } else {
         if (user.user_type === 1) {
-          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id " +
-                    "from customer " +
-                    "where id = ?";
+          var sql = "select id, convert(aes_decrypt(email_id, unhex(" + connection.escape(hexkey) + ")) using utf8) as email_id " +
+            "        from customer " +
+            "        where id = ? ";
 
         } else if (user.user_type === 2) {
-          var sql = "select id, convert(aes_decrypt(email_id, unhex("+ connection.escape(hexkey) +")) using utf8) as email_id, " +
-                               "nickname " +
-                    "from artist " +
-                    "where id = ?";
+          var sql = "select id, convert(aes_decrypt(email_id, unhex(" + connection.escape(hexkey) + ")) using utf8) as email_id, " +
+            "               nickname " +
+            "        from artist " +
+            "        where id = ?";
+        } else if (user.user_type === 3) {
+          var sql = "select id, facebook_email as email_id " +
+            "        from customer " +
+            "        where id = ?";
         }
+
 
         connection.query(sql, [user.id], function (err, results) {
           connection.release(); //주의!!!
@@ -34,7 +41,7 @@ module.exports = function (passport) {
             var user = {
               "id": results[0].id,
               "email_id": results[0].email_id,
-              "nickname" : results[0].nickname
+              "nickname": results[0].nickname
             };
             done(null, user);
           }
@@ -88,7 +95,7 @@ module.exports = function (passport) {
           } else {
             var user = {
               "id": results[0].id,
-              "user_type" : user_type,
+              "user_type": user_type,
               "hashPassword": results[0].password
             };
             callback(null, user);
@@ -122,4 +129,95 @@ module.exports = function (passport) {
       }
     });
   }));
+
+  passport.use('facebook-token', new FacebookTokenStrategy({
+    "clientID": authConfig.facebook.appId,
+    "clientSecret": authConfig.facebook.appSecret,
+    "profileFields": ["id", "email"]
+  }, function (accessToken, refreshToken, profile, done) {
+
+    function getConnection(callback) {
+      pool.getConnection(function (err, connection) {
+        if (err) {
+          callback(err);
+        } else {
+          callback(null, connection);
+        }
+      });
+    }
+
+    function selectOrCreateUser(connection, callback) {
+      // DB에서 username과 관련딘 id와 password를 조회하는 쿼리를 작성한다.
+      var sql = "SELECT id, facebook_id, facebook_email, facebook_token " +
+        "        FROM customer " +
+        "        WHERE facebook_id = ?";
+      connection.query(sql, [profile.id], function (err, results) {
+        if (err) {
+          connection.release();
+          callback(err);
+        } else {
+          if (results.length === 0) { // 쿼리 결과 일치하는 사용자가 없을 때 INSERT 한다.
+            var insert = "INSERT INTO customer (facebook_id, facebook_token, facebook_email) " +
+              "           VALUES (?,?,?)";
+            connection.query(insert, [profile.id, accessToken, profile.emails[0].value], function (err, result) {
+              if (err) {
+                connection.release();
+                callback(err);
+              } else {
+                connection.release();
+                var user = {
+                  "id": result.insertId,
+                  "email_id": profile.emails[0].value,
+                  "user_type": 3
+                };
+                callback(null, user);
+              }
+            });
+          } else { //일치하는 사용자가 있으면 facebook_token을 업데이트할지 결정
+            if (accessToken === results[0].facebook_token) { //같으면 업데이트하지 않고 user 객체에 담아 넘겨준다.
+              connection.release();
+              var user = {
+                "id": results[0].id,
+                "email_id": results[0].facebook_email,
+                "user_type": 3
+              };
+              callback(null, user);
+            } else {
+
+              console.log(results[0].facebook_token);
+
+
+              var update = "UPDATE customer " +
+                "           SET facebook_token = ?, " +
+                "           facebook_email = ? " +
+                "           WHERE facebook_id = ?";
+              connection.query(update, [accessToken, profile.emails[0].value, profile.id], function (err) {
+                connection.release();
+                if (err) {
+                  callback(err);
+                } else {
+                  var user = {
+                    "id": results[0].id,
+                    "email_id": profile.emails[0].value,
+                    "user_type": 3
+                  };
+                  callback(null, user);
+                }
+              });
+            }
+          }
+        }
+      });
+    }
+
+    async.waterfall([getConnection, selectOrCreateUser], function (err, user) {
+      if (err) {
+        done(err);
+      } else {
+        done(null, user);
+      }
+    });
+
+  }));
+
 };

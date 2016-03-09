@@ -62,7 +62,7 @@ router.post('/local', function (req, res, next) {
           } else {
             var result = {
               "successResult": {
-                "message": "로그인 되셨습니다"
+                "message": "로그인이 정상적으로 되었습니다."
               }
             };
             res.json(result);
@@ -78,5 +78,31 @@ router.post('/local', function (req, res, next) {
   }
 });
 
-
+router.post('/facebook', function(req,res,next) {
+  if (req.secure) {
+    //콜백을 빼고 facebook token이 되었다!
+    passport.authenticate('facebook-token', {"scope": "email"}, function (err, user, info) { // passport로부터 user객체 받아온다.
+      if (err) {
+        next(err);
+      } else {
+        req.logIn(user, function (err) {
+          if (err) {
+            next(err);
+          } else {
+            var result = {
+              "successResult": {
+                "message": "페이스북 로그인이 정상적으로 되었습니다."
+              }
+            };
+            res.json(result);
+          }
+        }); // passport가 설치되면 req객체에게 logIn이라는 함수를 쓸 수 있도록 연결해준다.
+      }
+    })(req, res, next);
+  } else {
+    var err = new Error('SSL/TLS Upgrade Required');
+    err.status = 426; // upgrade required.
+    next(err);
+  }
+});
 module.exports = router;
