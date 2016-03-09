@@ -290,7 +290,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
             s3.upload({"Body": body}) //pipe역할
               .send(function (err, data) {
                 if (err) {
-                  console.log('에러12');
+                  s3.deleteObject();
                   connection.rollback();
                   connection.release();
                   callback(err);
@@ -299,13 +299,13 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
                     var value = [resultId, files.photo.name, data.key.split('/')[1], files.photo.size, files.photo.type, data.Location];
                     connection.query(insertPostPhotoSql, value, function (err) {
                       if (err) {
+                        s3.deleteObject();
                         connection.rollback();
                         connection.release();
                         var err = new Error('게시글 쓰기에 실패하였습니다.');
                         err.statusCode = -120;
                         cb(err);
                       } else {
-                        console.log('성공12');
                         cb(null);
                       }
                     });
@@ -318,7 +318,9 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
             if (err) {
               callback(err);
             } else {
-              callback(null, connection);
+              connection.commit();
+              connection.release();
+              callback(null);
             }
           });
         });
@@ -326,12 +328,10 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     });
   }
 
-  async.waterfall([getConnection, insertPost], function (err, connection) {
+  async.waterfall([getConnection, insertPost], function (err) {
     if (err) {
       next(err);
     } else {
-      connection.commit();
-      connection.release();
       var result = {
         "successResult": {
           "message": "게시글이 정상적으로 게시되었습니다."
