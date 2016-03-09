@@ -30,27 +30,27 @@ router.get('/', function (req, res, next) {
     }
 
     function selectUserJJim(connection, callback) {
-        var pageArr = [userId, listPerPage, (page-1)*listPerPage];
-        var selectShopJJimSql = "select s.id as shop_id, s.name as shopName, s.longitude, s.latitude, pd.photoURL " +
+        var pageArr = [userId, listPerPage, (page - 1) * listPerPage];
+        var selectShopJJimSql = "select s.id as shop_id, s.name as shopName, s.longitude, s.latitude, pd.mainPhoto " +
                                 "from jjim_shops js join (select id, name, longitude, latitude " +
                                                          "from shop) s " +
                                                    "on (js.shop_id = s.id) " +
-                                                   "left join (select from_id, path as photoURL " +
+                                                   "left join (select from_id, path as mainPhoto " +
                                                               "from photo_datas " +
                                                               "where from_type ='샵' " +
-                                                              "limit 0,1) pd " +
+                                                              "group by from_id) pd " +
                                                    "on (pd.from_id = s.id) " +
-                                "where customer_id =? " +
+                                "where js.customer_id =? " +
                                 "LIMIT ? OFFSET ?";
 
-        var selectArtistJJimSql = "select a.id as artist_id, a.nickname as artistNickname, a.discount, pd.photoURL " +
+        var selectArtistJJimSql = "select a.id as artist_id, a.nickname as artistNickname, a.discount, pd.mainPhoto " +
                                   "from jjim_artists ja join (select id, nickname, discount " +
                                                              "from artist) a " +
                                                        "on (a.id = ja.artist_id) " +
-                                                       "left join (select from_id, path as photoURL " +
+                                                       "left join (select from_id, path as mainPhoto " +
                                                                   "from photo_datas " +
                                                                   "where from_type ='아티스트'" +
-                                                                  "limit 0,1) pd " +
+                                                                  "group by from_id) pd " +
                                                        "on (pd.from_id = a.id) " +
                                   "where ja.customer_id = ? " +
                                   "LIMIT ? OFFSET ?";

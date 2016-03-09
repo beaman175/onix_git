@@ -397,10 +397,10 @@ router.get('/:artist_id/comments', function (req, res, next) {
 
   function selectArtistComments(connection, callback) {
     var artistCommentsql = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
-      "as 'register_date', content " +
-      "from artist_comments " +
-      "where artist_id=? " +
-      "limit ? offset ? ";
+      "                            as register_date, content " +
+      "                     from artist_comments " +
+      "                     where artist_id=? " +
+      "                     limit ? offset ? ";
     var pageArr = [artist_id, listPerPage, (commentpage - 1) * listPerPage];
     connection.query(artistCommentsql, pageArr, function (err, artistCommentResult) {
       connection.release();
@@ -462,8 +462,8 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
   }
 
   function insertComment(writeInfo, connection, callback) {
-    var insertCommentSql = "insert into artist_comments(writer_id, writer,content,artist_id) " +
-      "values(?,?,?,?);";
+    var insertCommentSql = "insert into artist_comments(writer_id, writer, content, artist_id) " +
+      "                     values(?,?,?,?);";
 
     connection.query(insertCommentSql, writeInfo, function (err) {
       if (err) {
