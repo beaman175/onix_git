@@ -12,105 +12,119 @@ function isLoggedIn(req, res, next) {
   }
 }
 //2. 아티스트 닉네임 조회
-router.get('/me', function (req, res, next) {
-  if (req.isAuthenticated()) {
-    var artist_id = req.user.id;
-  }
-
-  function getConnection(callback) {
-    pool.getConnection(function (err, connection) {
-      if (err) {
-        callback(err);
-      } else {
-        callback(null, connection);
-      }
-    });
-  }
-
-  function selectArtistNickname(connection, callback) {
-    var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname " +
-      "from artist " +
-      "where id = ? ";
-    connection.query(artistNicknamesql, artist_id, function (err, artistNicknameResult) {
-      connection.release();
-      if (err) {
-        callback(err);
-      } else {
-        callback(null, artistNicknameResult);
-      }
-    });
-  }
-
-  function resultJSON(artistNicknameResult, callback) {
-    var result = {
-      "successResult": {
-        "message": "닉네임이 정상적으로 조회 되었습니다",
-        "nickname": artistNicknameResult[0].nickname
-      }
-    };
-    callback(null, result);
-  }
-
-  async.waterfall([getConnection, selectArtistNickname, resultJSON], function (err, result) {
-    if (err) {
-      var err = new Error('닉네임 조회를 하지 못하였습니다.');
-      err.statusCode = -102;
-      next(err);
-    } else {
-      res.json(result);
+router.get('/me', isLoggedIn, function (req, res, next) {
+  if (req.secure) {
+    if (req.isAuthenticated()) {
+      var artist_id = req.user.id;
     }
-  });
-});
-//3.아티스트 닉네임 설정
-router.put('/me', function (req, res, next) {
-  if (req.isAuthenticated()) {
-    var artist_id = req.user.id;
-  }
-  var nickname = req.body.nickname;
 
-  function getConnection(callback) {
-    pool.getConnection(function (err, connection) {
-      if (err) {
-        callback(err);
-      } else {
-        callback(null, connection);
-      }
-    });
-  }
-
-  function updateArtistNickname(connection, callback) {
-    var artistNicknamesql = "update artist set nickname = ? " +
-      "where id =?";
-    connection.query(artistNicknamesql, [nickname, artist_id], function (err, artistNicknameResult) {
-      connection.release();
-      if (err) {
-        callback(err);
-      } else {
-        if (artistNicknameResult.affectedRows === 0) {
-          var err = new Error('닉네임 설정을 하지 못하였습니다.');
-          err.statusCode = -103;
+    function getConnection(callback) {
+      pool.getConnection(function (err, connection) {
+        if (err) {
           callback(err);
         } else {
-          var result = {
-            "successResult": {
-              "message": "닉네임이 정상적으로 등록 되었습니다"
-            }
-          };
-          callback(null, result);
+          callback(null, connection);
         }
+      });
+    }
+
+    function selectArtistNickname(connection, callback) {
+      var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname " +
+        "from artist " +
+        "where id = ? ";
+      connection.query(artistNicknamesql, artist_id, function (err, artistNicknameResult) {
+        connection.release();
+        if (err) {
+          callback(err);
+        } else {
+          callback(null, artistNicknameResult);
+        }
+      });
+    }
+
+    function resultJSON(artistNicknameResult, callback) {
+      var result = {
+        "successResult": {
+          "message": "닉네임이 정상적으로 조회 되었습니다",
+          "nickname": artistNicknameResult[0].nickname
+        }
+      };
+      callback(null, result);
+    }
+
+    async.waterfall([getConnection, selectArtistNickname, resultJSON], function (err, result) {
+      if (err) {
+        var err = new Error('닉네임 조회를 하지 못하였습니다.');
+        err.statusCode = -102;
+        next(err);
+      } else {
+        res.json(result);
       }
     });
+  } else {
+    var err = new Error('SSL/TLS Upgrade Required');
+    err.status = 426;
+    next(err);
+  }
+});
+//3.아티스트 닉네임 설정
+router.put('/me', isLoggedIn, function (req, res, next) {
+  if (req.seruce) {
+    if (req.isAuthenticated()) {
+      var artist_id = req.user.id;
+    }
+    var nickname = req.body.nickname;
+
+    function getConnection(callback) {
+      pool.getConnection(function (err, connection) {
+        if (err) {
+          callback(err);
+        } else {
+          callback(null, connection);
+        }
+      });
+    }
+
+    function updateArtistNickname(connection, callback) {
+
+      var artistNicknamesql = "update artist set nickname = ? " +
+        "where id =?";
+      connection.query(artistNicknamesql, [nickname, artist_id], function (err, artistNicknameResult) {
+        connection.release();
+        if (err) {
+          callback(err);
+        } else {
+          if (artistNicknameResult.affectedRows === 0) {
+            var err = new Error('닉네임 설정을 하지 못하였습니다.');
+            err.statusCode = -103;
+            callback(err);
+          } else {
+            var result = {
+              "successResult": {
+                "message": "닉네임이 정상적으로 등록 되었습니다"
+              }
+            };
+            callback(null, result);
+          }
+        }
+      });
+    }
+
+    async.waterfall([getConnection, updateArtistNickname], function (err, result) {
+      if (err) {
+        var err = new Error('닉네임 설정을 하지 못하였습니다.');
+        err.statusCode = -103;
+        next(err);
+      } else {
+        res.json(result);
+      }
+    });
+  } else {
+    var err = new Error('SSL/TLS Upgrade Required');
+    err.status = 426;
+    next(err);
   }
 
-  async.waterfall([getConnection, updateArtistNickname], function (err, result) {
-    if (err) {
-      var err = new Error('닉네임 설정을 하지 못하였습니다.');
-      err.statusCode = -103;
-      next(err);
-    } else {
-      res.json(result);
-    }
-  });
 });
 
 //12. 아티스트 정보조회
@@ -145,16 +159,17 @@ router.get('/', function (req, res, next) {
   function selectArtists(connection, callback) {
 
     var artist_sql = "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artist_jjim_counts, " +
-      "a.discount, pd.mainPhoto " +
-      "from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts " +
-      "from jjim_artists " +
-      "group by artist_id)ja " +
-      "on (ja.artist_id = a.id) " +
-      "left join (select from_id, path as mainPhoto " +
-      "from photo_datas " +
-      "where from_type ='아티스트' " +
-      "limit 0,1) pd " +
-      "on (a.id = pd.from_id) ";
+      "                      a.discount, pd.mainPhoto " +
+      "               from artist a left join (select artist_id, count(customer_id) as artist_jjim_counts " +
+      "                                        from jjim_artists " +
+      "                                        group by artist_id)ja " +
+      "                             on (ja.artist_id = a.id) " +
+      "                             left join (select from_id, path as mainPhoto " +
+      "                                        from photo_datas " +
+      "                                        where from_type ='아티스트' " +
+      "                                        group by from_id) pd " +
+      "                             on (a.id = pd.from_id) ";
+
     if (search != undefined) {
       var finding = "where a.nickname like " + '"%' + search + '%"';
       artist_sql += finding;
@@ -229,7 +244,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                    from artist a left join (select from_id, path "+
         "                                             from photo_datas "+
         "                                             where from_type ='프로필' "+
-        "                                             LIMIT 0,1) pd "+
+        "                                             group by from_id) pd "+
         "                                  on (a.id = pd.from_id) " +
         "                                  left join (select id, name as shopName " +
         "                                            from shop) s "+

@@ -58,7 +58,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     "                        date_format(CONVERT_TZ(p.register_date, '+00:00', '+9:00'), '%Y-%m-%d %H:%i:%s') as register_date, " +
     "                        pd.path as boardPhoto, p.title, p.content "+
     "                 from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
-    "                                                 from posts) p " +
+    "                                          from posts) p " +
     "                                    on (p.postboard_id = pbd.id) "+
     "                                    left join (select from_id, path "+
     "                                               from photo_datas " +
@@ -85,49 +85,30 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
   }
 
   //사진과 댓글을 불러온다
-  function selectBoardsDetails(connection, board_results, callback) {
+  function selectBoardsComments(connection, board_results, callback) {
     idx = 0;
-    async.eachSeries(board_results, function (item, cb) {
-      var boards_comments = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
-        "                           as register_date, content " +
-        "                    from reply  " +
-        "                    where posts_id = ?  " +
-        "                    limit 10 offset 0";
-      var board_photo = "select from_id, path as photoURL " +
-        "                from photo_datas " +
-        "                where from_type ='게시판' and from_id= ?";
+    var boards_comments = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+      "                           as register_date, content " +
+      "                    from reply  " +
+      "                    where posts_id = ?  " +
+      "                    limit 10 offset 0";
 
-      async.series([function (cb2) {
-        connection.query(boards_comments, item.id, function (err, board_replies_results) {
-          if (err) {
-            cb2(err);
-          } else {
-            board_results[idx].replies = board_replies_results;
-            cb2(null);
-          }
-        });
-      }, function (cb2) {
-        connection.query(board_photo, item.id, function (err, board_photo_results) {
-          if (err) {
-            cb2(err);
-          } else {
-            if (board_photo_results.length) {
-              board_results[idx].photoURL = board_photo_results[0].photoURL;
-            } else {
-              board_results[idx].photoURL = null;
-            }
-            cb2(null);
-          }
-        });
-      }], function (err, result) {
-        idx++;
-        cb(null);
+    async.eachSeries(board_results, function (item, cb) {
+
+      connection.query(boards_comments, item.post_id, function (err, board_replies_results) {
+        if (err) {
+          cb2(err);
+        } else {
+          board_results[idx].replies = board_replies_results;
+          idx++;
+          cb(null);
+        }
       });
     }, function (err) {
+      connection.release();
       if (err) {
         callback(err);
       } else {
-        connection.release();
         callback(null, board_results);
       }
     });
@@ -138,14 +119,14 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     var postList = [];
     async.eachSeries(board_results, function (item, cb) {
       var post_element = {
-        "post_id": item.id,
+        "post_id": item.post_id,
         "boardName" :item.boardName,
         "writer_id": item.writer_id,
         "writer": item.writer,
         "register_date": item.register_date,
         "title": item.title,
         "content": item.content,
-        "boardPhoto": item.photoURL,
+        "boardPhoto": item.boardPhoto,
         "replies": item.replies
       };
       postList.push(post_element);
@@ -167,7 +148,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     });
   }
 
-  async.waterfall([getConnection, selectBoards, selectBoardsDetails, resultJSON], function (err, results) {
+  async.waterfall([getConnection, selectBoards, selectBoardsComments, resultJSON], function (err, results) {
     if (err) {
       next(err);
     } else {
