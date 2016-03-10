@@ -263,7 +263,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
                 var err = new Error('게시글 쓰기에 실패하였습니다.');
                 err.statusCode = -120;
                 console.log('에러1');
-
                 cb(err);
               } else {
                 console.log('12312');
