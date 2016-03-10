@@ -44,25 +44,25 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   //게시글 목록을 select
   function selectBoards(connection, callback) {
-    var boards_sql = "select pbd.name as boardName, p.id as post_id, p.writer_id, p.writer, "+
-    "                        date_format(CONVERT_TZ(p.register_date, '+00:00', '+9:00'), '%Y-%m-%d %H:%i:%s') as register_date, " +
-    "                        pd.path as boardPhoto, p.title, p.content "+
-    "                 from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
-    "                                          from posts) p " +
-    "                                    on (p.postboard_id = pbd.id) "+
-    "                                    left join (select from_id, path "+
-    "                                               from photo_datas " +
-    "                                               where from_type ='게시판' "+
-    "                                               group by from_id) pd "+
-    "                                    on (p.id = pd.from_id) "+
-    "                 where pbd.id = ? ";
+    var boards_sql = "select pbd.name as boardName, p.id as post_id, p.writer_id, p.writer, " +
+      "                        date_format(CONVERT_TZ(p.register_date, '+00:00', '+9:00'), '%Y-%m-%d %H:%i:%s') as register_date, " +
+      "                        pd.path as boardPhoto, p.title, p.content " +
+      "                 from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
+      "                                          from posts) p " +
+      "                                    on (p.postboard_id = pbd.id) " +
+      "                                    left join (select from_id, path " +
+      "                                               from photo_datas " +
+      "                                               where from_type ='게시판' " +
+      "                                               group by from_id) pd " +
+      "                                    on (p.id = pd.from_id) " +
+      "                 where pbd.id = ? ";
 
     if (search != undefined) {
       var finding = "and p.title like " + '"%' + search + '%"';
       boards_sql += finding;
     }
-      boards_sql += "order by register_date desc " +
-                    "LIMIT ? OFFSET ?";
+    boards_sql += "order by register_date desc " +
+      "LIMIT ? OFFSET ?";
 
     var pageArr = [postBoard_id, listPerPage, (page - 1) * listPerPage];
 
@@ -111,7 +111,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     async.eachSeries(board_results, function (item, cb) {
       var post_element = {
         "post_id": item.post_id,
-        "boardName" :item.boardName,
+        "boardName": item.boardName,
         "writer_id": item.writer_id,
         "writer": item.writer,
         "register_date": item.register_date,
@@ -214,10 +214,13 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
 // 19. 게시판  글 쓰기
 router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
-  var form = new formidable.IncomingForm();
-  form.uploadDir = path.join(__dirname, '../uploads');
-  form.keepExtensions = true;
-  form.multiples = true;
+
+  var writer_id = req.user.id;
+  if (req.user.nickname === undefined) {
+    var writer = req.user.email_id.substring(0, (req.user.email_id.indexOf('@') - 3)).concat('***');
+  } else {
+    var writer = req.user.nickname;
+  }
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
@@ -229,36 +232,34 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     });
   }
 
-  function insertPost(connection, callback) {
 
-    var writer_id = req.user.id;
-    if (req.user.nickname === undefined) {
-      var writer = req.user.email_id.substring(0, (req.user.email_id.indexOf('@') - 3)).concat('***');
-    } else {
-      var writer = req.user.nickname;
-    }
+  function insertPost(connection, callback) {
     var insertPostSql = "insert into posts (postboard_id, writer_id, writer, title, content) values (?,?,?,?,?)";
     var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,'게시판',?,?,?,?,?)";
 
+    var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
 
-    form.parse(req, function (err, fields, files) {
+    if (req.headers['content-type'] === 'application/x-www-form-urlencoded') { // 사진을 올리지 않은 경우
+      connection.query(insertPostSql, writeXform, function (err) {
+        if (err) {
+          callback(err);
+        } else {
+          callback(null);
+        }
+      });
+    }
+    else {
+      var form = new formidable.IncomingForm();
+      form.uploadDir = path.join(__dirname, '../uploads');
+      form.keepExtensions = true;
+      form.multiples = true;
 
-      var writerValue = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
-
-      if (!files['photo']) { // 사진을 올리지 않은 경우
-        connection.query(insertPostSql, writerValue, function (err) {
-          if (err) {
-            callback(err);
-          } else {
-            callback(null);
-          }
-        });
-      }
-      else { // 기타 (사진을 하나 올렸을 경우)
+      form.parse(req, function (err, fields, files) {
+        var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
         connection.beginTransaction(function (err) {
 
           function insertPost(cb) {
-            connection.query(insertPostSql, writerValue, function (err, result) {
+            connection.query(insertPostSql, writeNomalform, function (err, result) {
               if (err) {
                 connection.rollback();
                 connection.release();
@@ -318,9 +319,10 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
               callback(null);
             }
           });
+
         });
-      }
-    });
+      });
+    }
   }
 
   async.waterfall([getConnection, insertPost], function (err) {
@@ -338,6 +340,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     }
   });
 });
+
 
 // 20.게시판 내에 댓글 쓰기
 router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, res, next) {
