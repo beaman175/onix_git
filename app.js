@@ -50,20 +50,41 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(function (req, res, next) {
   var deleteSalemsgSql = "delete FROM salepushmsg";
+  var updateDiscountSql = "update artist set discount = 0 ";
   var cronstyle = '0 0 * * * ';
   if (scheduleFlag) {
+    scheduleFlag = false;
     nodeschedule.scheduleJob(cronstyle, function () {
       pool.getConnection(function (err, connection) {
-        connection.query(deleteSalemsgSql, function (err) {
-          if (err) {
-            next(err);
-          }
+        async.series([function (cb) {
+          connection.query(deleteSalemsgSql, function (err) {
+            if (err) {
+              cb(err);
+            } else {
+              cb(null);
+            }
+          });
+        }, function (cb) {
+          connection.query(updateDiscountSql, function (err) {
+            if (err) {
+              cb(err);
+            } else {
+              cb(null);
+            }
+          });
+        }], function (err) {
+            if(err){
+              next(err);
+            }else {
+              next();
+            }
         });
       });
     });
-    scheduleFlag = false;
+    next();
+  } else {
+    next();
   }
-  next();
 });
 
 //mapping mount points with router-level middleware modules
