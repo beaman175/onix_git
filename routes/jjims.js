@@ -12,7 +12,7 @@ function isLoggedIn(req, res, next) {
   }
 }
 
-// 6.찜조회
+//7.찜조회
 router.get('/', isLoggedIn, function (req, res, next) {
   if (req.user.nickname === undefined) {
 
@@ -97,7 +97,9 @@ router.get('/', isLoggedIn, function (req, res, next) {
 
     async.waterfall([getConnection, selectUserJJim], function (err, results) {
       if (err) {
-        next(err);
+        var error = new Error('찜목록을 조회 할 수 없습니다.');
+        error.statusCode = -107;
+        next(error);
       } else {
         res.json(results);
       }
@@ -107,7 +109,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
   }
 });
 
-//8.찜하기
+//9.찜하기
 router.post('/:target_id/plus', isLoggedIn, function (req, res, next) {
   if (req.user.nickname === undefined) {
     var target_id = req.params.target_id;
@@ -148,7 +150,9 @@ router.post('/:target_id/plus', isLoggedIn, function (req, res, next) {
 
     async.waterfall([getConnection, insertJJim], function (err, result) {
       if (err) {
-        next(err);
+        var error = new Error('찜하기에 에러가 발생하였습니다.');
+        error.statusCode = -109;
+        next(error);
       } else {
         res.json(result);
       }
@@ -159,7 +163,7 @@ router.post('/:target_id/plus', isLoggedIn, function (req, res, next) {
 
 });
 
-//9.찜삭제
+//10.찜삭제
 router.delete('/:target_id/minus', isLoggedIn, function (req, res, next) {
   if (req.user.nickname === undefined) {
     var target_id = req.params.target_id;
@@ -199,7 +203,9 @@ router.delete('/:target_id/minus', isLoggedIn, function (req, res, next) {
 
     async.waterfall([getConnection, deleteJJim], function (err, result) {
       if (err) {
-        next(err);
+        var error = new Error('찜삭제 하는 도중에 에러가 발생하였습니다.');
+        error.statusCode = -110;
+        next(error);
       } else {
         res.json(result);
       }

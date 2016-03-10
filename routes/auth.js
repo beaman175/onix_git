@@ -14,7 +14,8 @@ function isLoggedIn(req, res, next) {
   }
 }
 
-router.post('/logout', function(req, res, next) {
+//4-2 로그아웃
+router.post('/logout', function (req, res, next) {
   req.logout(); //세션에서 정보를 지움
   res.json({
     "successResult": {
@@ -42,8 +43,7 @@ router.get('/me', isLoggedIn, function (req, res, next) {
   }
 });
 
-//3.로컬로그인
-// 로그인을 위한 미들웨어를 등록한다.
+//4.로컬 로그인
 router.post('/local', function (req, res, next) {
   if (req.secure) { //req.protocol === "https" 즉 https로 통신하고 있는지 판별
 
@@ -57,7 +57,9 @@ router.post('/local', function (req, res, next) {
       } else {
         req.logIn(user, function (err) {
           if (err) {
-            next(err);
+            var error = new Error('로그인 중 문제가 발생하였습니다.');
+            error.statusCode = -104;
+            next(error);
           } else {
             var result = {
               "successResult": {
@@ -77,15 +79,19 @@ router.post('/local', function (req, res, next) {
   }
 });
 
-router.post('/facebook', function(req,res,next) {
+//5.페이스북 로그인
+router.post('/facebook', function (req, res, next) {
   if (req.secure) {
-    passport.authenticate('facebook-token', function (err, user, info) { // passport로부터 user객체 받아온다.
+    // passport로부터 user객체 받아온다.
+    passport.authenticate('facebook-token', function (err, user, info) {
       if (err) {
         next(err);
       } else {
         req.logIn(user, function (err) {
           if (err) {
-            next(err);
+            var error = new Error('페이스북 연동에 문제가 생겼습니다.');
+            error.statusCode = -105;
+            next(error);
           } else {
             var result = {
               "successResult": {

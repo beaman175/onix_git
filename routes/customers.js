@@ -14,7 +14,6 @@ router.post('/', function(req, res, next) {
         function getConnection(callback) {
             pool.getConnection(function (err, connection) {
                 if (err) {
-                    console.log("connection에러");
                     callback(err);
                 } else {
                     callback(null, connection);
@@ -39,7 +38,6 @@ router.post('/', function(req, res, next) {
                         connection.release();
                         var err = new Error('회원 가입 하지 못하였습니다');
                         err.statusCode = -101;
-
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -54,7 +52,6 @@ router.post('/', function(req, res, next) {
             var rounds = 10;
             bcrypt.genSalt(rounds, function (err, salt) {
                 if (err) {
-                    console.log("salt에러");
                     callback(err);
                 } else {
                     callback(null, salt, connection);
@@ -66,7 +63,6 @@ router.post('/', function(req, res, next) {
         function generateHashPassword(salt, connection, callback) {
             bcrypt.hash(password, salt, function (err, hashPassword) {
                 if (err) {
-                    console.log("hash에러");
                     callback(err);
                 } else {
                     callback(null, hashPassword, connection);
@@ -84,7 +80,6 @@ router.post('/', function(req, res, next) {
             connection.query(sql, function (err, result) {
                 connection.release();
                 if (err) {
-                    console.log("insert에러");
                     callback(err);
                 } else {
                     callback(null, {
@@ -96,7 +91,9 @@ router.post('/', function(req, res, next) {
 
         async.waterfall([getConnection, selectCustomer, generateSalt, generateHashPassword, insertCustomer], function (err, result) {
             if (err) {
-                next(err);
+                var error = new Error ('회원 가입 하지 못하였습니다');
+                error.statusCode =  -101;
+                next(error);
             } else {
                 var result = {
                     "successResult": {

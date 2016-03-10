@@ -14,7 +14,7 @@ function isLoggedIn(req, res, next) {
   }
 }
 
-//5.세일 푸시 조회
+//6.세일 푸시 조회
 router.get('/', isLoggedIn, function (req, res, next) {
   if (req.user.nickname === undefined) {
     var userId = req.user.id;
@@ -97,7 +97,9 @@ router.get('/', isLoggedIn, function (req, res, next) {
 
     async.waterfall([getConnection, selectSalePushes, resultJSON], function (err, results) {
       if (err) {
-        next(err);
+        var error = new Error('할인 정보 조회에 실패하였습니다.');
+        error.statusCode = -106;
+        next(error);
       } else {
         res.json(results);
       }
@@ -108,7 +110,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
   }
 });
 
-//7.세일 푸시
+//8.세일 푸시
 router.post('/', isLoggedIn, function (req, res, next) {
 
   if (req.user.nickname !== undefined) {

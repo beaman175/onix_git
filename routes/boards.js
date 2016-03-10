@@ -18,7 +18,7 @@ function isLoggedIn(req, res, next) {
   }
 }
 
-// 16.게시판 조회
+// 17.게시판 조회
 router.get('/:postBoard_id/posts', function (req, res, next) {
 
   var idx = 0; //인덱스
@@ -141,14 +141,16 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   async.waterfall([getConnection, selectBoards, selectBoardsComments, resultJSON], function (err, results) {
     if (err) {
-      next(err);
+      var error = new Error('게시판의 글들을 조회 하지 못하였습니다.');
+      error.statusCode = -117;
+      next(error);
     } else {
       res.json(results);
     }
   });
 });
 
-// 17. 게시판 내 댓글 더보기
+// 18. 게시판 내 댓글 더보기
 router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
   var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
   var post_id = parseInt(req.params.post_id);// 해당 게시판 글 id
@@ -200,14 +202,16 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
 
   async.waterfall([getConnection, selectBoardReplies, resultJSON], function (err, results) {
     if (err) {
-      next(err);
+      var error = new Error('댓글 더보기 중에 에러가 발생하였습니다.');
+      error.statusCode = -118;
+      next(error);
     } else {
       res.json(results);
     }
   });
 });
 
-// 18. 게시판  글 쓰기
+// 19. 게시판  글 쓰기
 router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   var postBoard_id = parseInt(req.params.postBoard_id); //1(QnA), 2(커뮤니티), 3(공지사항)
   var form = new formidable.IncomingForm();
@@ -244,8 +248,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       if (!files['photo']) { // 사진을 올리지 않은 경우
         connection.query(insertPostSql, writerValue, function (err) {
           if (err) {
-            var err = new Error('게시글 쓰기에 실패하였습니다.');
-            err.statusCode = -120;
             callback(err);
           } else {
             callback(null);
@@ -260,12 +262,8 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
               if (err) {
                 connection.rollback();
                 connection.release();
-                var err = new Error('게시글 쓰기에 실패하였습니다.');
-                err.statusCode = -120;
-                console.log('에러1');
                 cb(err);
               } else {
-                console.log('12312');
                 var resultId = result.insertId;
                 cb(null, resultId);
               }
@@ -301,8 +299,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
                         s3.deleteObject();
                         connection.rollback();
                         connection.release();
-                        var err = new Error('게시글 쓰기에 실패하였습니다.');
-                        err.statusCode = -120;
                         cb(err);
                       } else {
                         cb(null);
@@ -329,7 +325,9 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
 
   async.waterfall([getConnection, insertPost], function (err) {
     if (err) {
-      next(err);
+      var error = new Error('글 게시에 실패했습니다.');
+      error.statusCode = -119;
+      next(error);
     } else {
       var result = {
         "successResult": {
@@ -341,7 +339,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   });
 });
 
-// 19.게시판 내에 댓글 쓰기
+// 20.게시판 내에 댓글 쓰기
 router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, res, next) {
   var postBoard_id = req.params.postBoard_id; //1(QnA), 2(커뮤니티), 3(공지사항)
   var post_id = req.params.post_id; // 해당 게시판 글 id
@@ -374,8 +372,6 @@ router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, 
 
     connection.query(insertReplySql, writeInfo, function (err) {
       if (err) {
-        var err = new Error('댓글을 쓰기에 실패하였습니다.');
-        err.statusCode = -120;
         callback(err);
       } else {
         callback(null);
@@ -385,7 +381,9 @@ router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, 
 
   async.waterfall([checkingUser, getConnection, insertReply], function (err) {
     if (err) {
-      next(err);
+      var error = new Error('댓글을 쓰기에 실패하였습니다.');
+      error.statusCode = -120;
+      next(error);
     } else {
       var result = {
         "successResult": {

@@ -97,8 +97,6 @@ router.put('/me', isLoggedIn, function (req, res, next) {
           callback(err);
         } else {
           if (artistNicknameResult.affectedRows === 0) {
-            var err = new Error('닉네임 설정을 하지 못하였습니다.');
-            err.statusCode = -103;
             callback(err);
           } else {
             var result = {
@@ -129,7 +127,7 @@ router.put('/me', isLoggedIn, function (req, res, next) {
 
 });
 
-//12. 아티스트 정보조회
+//13. 아티스트 목록 조회
 router.get('/', function (req, res, next) {
   var page = parseInt(req.query.page);
   page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
@@ -211,14 +209,16 @@ router.get('/', function (req, res, next) {
 
   async.waterfall([getConnection, selectArtists, resultJSON], function (err, results) {
     if (err) {
-      next(err);
+      var error = new Error('아티스트의 정보를 불러오기 실패하였습니다.');
+      error.statusCode = -113;
+      next(error);
     } else {
       res.json(results);
     }
   });
 });
 
-// 13.아티스트 상세조회
+// 14.아티스트 상세조회
 router.get('/:artist_id', function (req, res, next) {
   var artist_id = parseInt(req.params.artist_id);
   var userId = 0;
@@ -371,14 +371,16 @@ router.get('/:artist_id', function (req, res, next) {
 
   async.waterfall([getConnection, selectArtistsDetail, resultJSON], function (err, results) {
     if (err) {
-      next(err);
+      var error = new Error('해당 아티스트의 페이지에 에러가 발생하였습니다');
+      error.statusCode = -114;
+      next(error);
     } else {
       res.json(results);
     }
   });
 });
 
-// 14.한줄평 더보기
+// 15.한줄평 더보기
 router.get('/:artist_id/comments', function (req, res, next) {
   var artist_id = parseInt(req.params.artist_id);
   var commentpage = parseInt(req.query.commentpage);
@@ -428,14 +430,16 @@ router.get('/:artist_id/comments', function (req, res, next) {
 
   async.waterfall([getConnection, selectArtistComments, resultJSON], function (err, results) {
     if (err) {
-      next(err);
+      var error = new Error('한줄평 더보기에 에러가 발생하였습니다.');
+      error.statusCode = -115;
+      next(error);
     } else {
       res.json(results);
     }
   });
 });
 
-// 15.아티스트 한줄평 쓰기
+// 16.아티스트 한줄평 쓰기
 router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
   if (req.user.nickname === undefined) {
     var artist_id = req.params.artist_id;
@@ -472,7 +476,9 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
 
     async.waterfall([getConnection, insertComment], function (err) {
       if (err) {
-        next(err);
+        var error = new Error('한줄평 쓰기에 실패했습니다.');
+        error.statusCode = -116;
+        next(error);
       } else {
         var result = {
           "successResult": {

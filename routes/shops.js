@@ -3,7 +3,7 @@ var router = express.Router();
 var async = require('async');
 
 
-//10.샵 목록 조회
+//11.샵 목록 조회
 router.get('/', function (req, res, next) {
     var page = parseInt(req.query.page);
     page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
@@ -80,15 +80,16 @@ router.get('/', function (req, res, next) {
 
     async.waterfall([getConnection, selectshops, resultJSON], function (err, results) {
         if (err) {
-            next(err);
+           var error = new Error('샵의 정보를 불러오기에 실패하였습니다.');
+           error.statusCode = -111;
+           next(error);
         } else {
             res.json(results);
         }
     });
 });
 
-
-//11.샵 상세 조회
+//12.샵 상세 조회
 router.get('/:shop_id', function (req, res, next) {
     var shop_id = parseInt(req.params.shop_id);
     var userId = 0;
@@ -223,7 +224,9 @@ router.get('/:shop_id', function (req, res, next) {
     }
     async.waterfall([getConnection, selectPickShopDetails,  resultJSON], function (err, result) {
         if (err) {
-            next(err);
+            var error = new Error('해당 샵의 페이지에  조회에 에러가 발생 했습니다.');
+            error.statusCode = -112;
+            next(error);
         } else {
             res.json(result);
         }
