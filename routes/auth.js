@@ -42,7 +42,6 @@ router.get('/me', isLoggedIn, function (req, res, next) {
   }
 });
 
-
 //3.로컬로그인
 // 로그인을 위한 미들웨어를 등록한다.
 router.post('/local', function (req, res, next) {
@@ -104,4 +103,5 @@ router.post('/facebook', function(req,res,next) {
     next(err);
   }
 });
+
 module.exports = router;
