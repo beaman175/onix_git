@@ -84,7 +84,7 @@ module.exports = function (passport) {
       }
 
       connection.query(sql, function (err, results) {
-        connection.release();
+
         if (err) {
           callback(err);
         } else {
@@ -98,23 +98,33 @@ module.exports = function (passport) {
               "user_type": user_type,
               "hashPassword": results[0].password
             };
-            callback(null, user);
+            callback(null, user, connection);
           }
         }
       });
     }
 
-    function compareUserInput(user, callback) {
+    function compareUserInput(user, connection, callback) {
       bcrypt.compare(password, user.hashPassword, function (err, result) { // 해시 전 패스워드 다음에 해시 후 패스워드가 와야 한다. 순서 중요
         if (err) {
           callback(err);
         } else {
           if (result) { //true
-            //토큰처리
-            //user type
-
-
-            callback(null, user);
+            //유저일 경우 푸시토큰 처리
+            if (user.user_type === 1) {
+              var updateTokenSql = "update customer set registration_token = ? " +
+                "where id = ? ";
+              connection.query(updateTokenSql, [req.body.registration_token, user.id], function (err) {
+                connection.release();
+                if (err) {
+                  callback(err);
+                } else {
+                  callback(null, user);
+                }
+              });
+            } else {
+              callback(null, user);
+            }
           } else { //false
             callback(null, false); //비밀번호가 틀렸을 때
           }
@@ -138,7 +148,7 @@ module.exports = function (passport) {
     "clientID": authConfig.facebook.appId,
     "clientSecret": authConfig.facebook.appSecret,
     "profileFields": ["id", "email"],
-     passReqToCallback : true
+    passReqToCallback: true
   }, function (req, accessToken, refreshToken, profile, done) {
 
     function getConnection(callback) {
@@ -163,12 +173,11 @@ module.exports = function (passport) {
         } else {
           if (results.length === 0) { // 쿼리 결과 일치하는 사용자가 없을 때 INSERT 한다.
 
-            //토큰처리1
-            var insert = "INSERT INTO customer (facebook_id, facebook_token, facebook_email) " +
-              "           VALUES (?,?,?)";
+            //페이스북 아이디와 푸시토큰 insert
+            var insert = "INSERT INTO customer (facebook_id, facebook_token, facebook_email, registration_token) " +
+              "           VALUES (?,?,?,?)";
 
-
-            connection.query(insert, [profile.id, accessToken, profile.emails[0].value], function (err, result) {
+            connection.query(insert, [profile.id, accessToken, profile.emails[0].value, req.body.registration_token], function (err, result) {
               if (err) {
                 connection.release();
                 callback(err);
@@ -184,25 +193,33 @@ module.exports = function (passport) {
             });
           } else { //일치하는 사용자가 있으면 facebook_token을 업데이트할지 결정
             if (accessToken === results[0].facebook_token) { //같으면 업데이트하지 않고 user 객체에 담아 넘겨준다.
-              // 토큰처리 2
-
-              connection.release();
-              var user = {
-                "id": results[0].id,
-                "email_id": results[0].facebook_email,
-                "user_type": 3
-              };
-              callback(null, user);
-
+              // 푸시토큰 업데이트
+              var updatePushTokenSql = "UPDATE customer " +
+                "                       SET  registration_token= ? " +
+                "                       WHERE facebook_id = ?";
+              connection.query(updatePushTokenSql, [req.body.registration_token, profile.id], function (err) {
+                connection.release();
+                if (err) {
+                  callback(err);
+                } else {
+                  var user = {
+                    "id": results[0].id,
+                    "email_id": results[0].facebook_email,
+                    "user_type": 3
+                  };
+                  callback(null, user);
+                }
+              });
             } else {
 
-              //토큰처리 3
-              var update = "UPDATE customer " +
-                "           SET facebook_token = ?, " +
-                "           facebook_email = ? " +
-                "           WHERE facebook_id = ?";
+              //페이스북 토큰, 푸시토큰 업데이트
+              var updateFacebookSql = "UPDATE customer " +
+                "                      SET facebook_token = ?, " +
+                "                          facebook_email = ?, " +
+                "                          registration_token= ? " +
+                "                      WHERE facebook_id = ?";
 
-              connection.query(update, [accessToken, profile.emails[0].value, profile.id], function (err) {
+              connection.query(updateFacebookSql, [accessToken, profile.emails[0].value, req.body.registration_token, profile.id], function (err) {
                 connection.release();
                 if (err) {
                   callback(err);
