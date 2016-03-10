@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
 var async = require('async');
+var authConfig = require('../config/authconfig');
+
 
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -110,7 +112,6 @@ router.get('/', isLoggedIn, function (req, res, next) {
 router.post('/', isLoggedIn, function (req, res, next) {
 
   if (req.user.nickname !== undefined) {
-    var server_access_key = 'AIzaSyBSjbCxj8l3FXK-ARKLBr1sX56vfHFv7dE';
 
     var discount = parseInt(req.body.discount); //할인율
     discount = isNaN(discount) ? 0 : discount;
@@ -188,7 +189,7 @@ router.post('/', isLoggedIn, function (req, res, next) {
                     connection.release();
                     callback(err);
                   } else {
-                    var sender = new gcm.Sender(server_access_key);
+                    var sender = new gcm.Sender(authConfig.gcm.server_access_key);
                     sender.send(message, regTokens, function (err) {
                       if (err) {
                         connection.rollback();

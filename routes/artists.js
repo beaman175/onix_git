@@ -11,6 +11,7 @@ function isLoggedIn(req, res, next) {
     next();
   }
 }
+
 //2. 아티스트 닉네임 조회
 router.get('/me', isLoggedIn, function (req, res, next) {
   if (req.secure) {
@@ -67,6 +68,7 @@ router.get('/me', isLoggedIn, function (req, res, next) {
     next(err);
   }
 });
+
 //3.아티스트 닉네임 설정
 router.put('/me', isLoggedIn, function (req, res, next) {
   if (req.seruce) {
@@ -241,20 +243,20 @@ router.get('/:artist_id', function (req, res, next) {
     function selectArtistPick(cb) {
       var artist_pick_sql = "select a.id as artist_id, a.nickname as artistNickname, " +
         "                           a.discount, a.intro, a.shop_id, s.shopName, pd.path as artistProfilePhoto " +
-        "                    from artist a left join (select from_id, path "+
-        "                                             from photo_datas "+
-        "                                             where from_type ='프로필' "+
-        "                                             group by from_id) pd "+
+        "                    from artist a left join (select from_id, path " +
+        "                                             from photo_datas " +
+        "                                             where from_type ='프로필' " +
+        "                                             group by from_id) pd " +
         "                                  on (a.id = pd.from_id) " +
         "                                  left join (select id, name as shopName " +
-        "                                            from shop) s "+
+        "                                            from shop) s " +
         "                                  on (a.shop_id = s.id)  " +
         "                    where a.id = ?";
       connection.query(artist_pick_sql, [artist_id], function (err, artist_pick_results) {
         if (err) {
           cb(err);
         } else {
-          if(artist_pick_results.length === 0){
+          if (artist_pick_results.length === 0) {
             cb(new Error('해당 아티스트는 존재하지 않습니다'));
           } else {
             cb(null, artist_pick_results);
@@ -357,7 +359,7 @@ router.get('/:artist_id', function (req, res, next) {
         "intro": artist_pick_results[0].intro,
         "jjim_status": artist_pick_results[0].jjim_status,
         "shop_id": artist_pick_results[0].shop_id,
-        "shopName" : artist_pick_results[0].shopName,
+        "shopName": artist_pick_results[0].shopName,
         "artistProfilePhoto": artist_pick_results[0].artistProfilePhoto,
         "artistPhotos": artist_pick_results.artistPhotos,
         "services": artist_pick_results.services,
@@ -435,59 +437,55 @@ router.get('/:artist_id/comments', function (req, res, next) {
 
 // 15.아티스트 한줄평 쓰기
 router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
-  var artist_id = req.params.artist_id;
-  var content = req.body.content;
+  if (req.user.nickname === undefined) {
+    var artist_id = req.params.artist_id;
+    var content = req.body.content;
 
-  function checkingUser(callback) {
-    if (req.user.nickname === undefined) {
-      var writer_id = req.user.id;
-      var writer = req.user.email_id.substring(0, (req.user.email_id.indexOf('@') - 3)).concat('***');
-      var writeInfo = [writer_id, writer, content, artist_id];
-      callback(null, writeInfo);
-    } else {
-      var err = new Error('아티스트는 한줄평을 쓸 수 없습니다');
-      callback(err);
-    }
-  }
+    var writer_id = req.user.id;
+    var writer = req.user.email_id.substring(0, (req.user.email_id.indexOf('@') - 3)).concat('***');
+    var writeInfo = [writer_id, writer, content, artist_id];
 
-
-  function getConnection(writeInfo, callback) {
-    pool.getConnection(function (err, connection) {
-      if (err) {
-        callback(err);
-      } else {
-        callback(null, writeInfo, connection);
-      }
-    });
-  }
-
-  function insertComment(writeInfo, connection, callback) {
-    var insertCommentSql = "insert into artist_comments(writer_id, writer, content, artist_id) " +
-      "                     values(?,?,?,?);";
-
-    connection.query(insertCommentSql, writeInfo, function (err) {
-      if (err) {
-        var err = new Error('한줄평 쓰기에 실패했습니다.');
-        err.statusCode = -116;
-        callback(err);
-      } else {
-        callback(null);
-      }
-    });
-  }
-
-  async.waterfall([checkingUser, getConnection, insertComment], function (err) {
-    if (err) {
-      next(err);
-    } else {
-      var result = {
-        "successResult": {
-          "message": "한줄평이 정상적으로 등록되었습니다."
+    function getConnection(callback) {
+      pool.getConnection(function (err, connection) {
+        if (err) {
+          callback(err);
+        } else {
+          callback(null, connection);
         }
-      };
-      res.json(result);
+      });
     }
-  });
+
+    function insertComment(connection, callback) {
+      var insertCommentSql = "insert into artist_comments(writer_id, writer, content, artist_id) " +
+        "                     values(?,?,?,?);";
+
+      connection.query(insertCommentSql, writeInfo, function (err) {
+        if (err) {
+          var err = new Error('한줄평 쓰기에 실패했습니다.');
+          err.statusCode = -116;
+          callback(err);
+        } else {
+          callback(null);
+        }
+      });
+    }
+
+    async.waterfall([getConnection, insertComment], function (err) {
+      if (err) {
+        next(err);
+      } else {
+        var result = {
+          "successResult": {
+            "message": "한줄평이 정상적으로 등록되었습니다."
+          }
+        };
+        res.json(result);
+      }
+    });
+  } else {
+    var err = new Error('아티스트는 한줄평을 쓸 수 없습니다');
+    next(err);
+  }
 });
 
 

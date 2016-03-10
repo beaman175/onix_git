@@ -80,8 +80,7 @@ router.post('/local', function (req, res, next) {
 
 router.post('/facebook', function(req,res,next) {
   if (req.secure) {
-    //콜백을 빼고 facebook token이 되었다!
-    passport.authenticate('facebook-token', {"scope": "email"}, function (err, user, info) { // passport로부터 user객체 받아온다.
+    passport.authenticate('facebook-token', function (err, user, info) { // passport로부터 user객체 받아온다.
       if (err) {
         next(err);
       } else {
