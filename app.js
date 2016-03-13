@@ -8,9 +8,36 @@ var path = require('path');
 var passport = require('passport'); //passport 설치
 var moment = require('moment-timezone');
 var nodeschedule = require('node-schedule');
-
 global.pool = require('./config/dbpool');
 require('./config/passportconfig')(passport);
+
+
+/*
+
+var winston = require('winston');
+var config  = {
+  transports : [
+    new winston.transports.Console({
+      level : 'error'
+
+    }), new winston.transports.File({
+      level : 'debug', // 우선순위 젤 높음
+      filename : 'app.log'
+    })
+  ]
+};
+
+
+var loggerr = new winston.Logger(config);
+loggerr.log('debug','debug message');
+loggerr.log('info','info message');
+
+//가장 중요한 로그 둘
+loggerr.log('warn','warn message');
+loggerr.log('error','error message');
+
+*/
+
 
 // loading router-level-middleware modules
 var artists = require('./routes/artists');

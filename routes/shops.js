@@ -2,7 +2,6 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 
-
 //11.샵 목록 조회
 router.post('/', function (req, res, next) {
   var page = parseInt(req.body.page);
@@ -261,6 +260,5 @@ router.get('/:shop_id', function (req, res, next) {
     }
   });
 });
-
 
 module.exports = router;
