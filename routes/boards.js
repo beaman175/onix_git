@@ -4,7 +4,7 @@ var async = require('async');
 var formidable = require('formidable');
 var AWS = require('aws-sdk');
 var path = require('path');
-var s3Config = require('../config/s3Config');
+var s3Config = require('../config/s3config');
 var fs = require('fs');
 var mime = require('mime');
 
