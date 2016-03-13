@@ -210,8 +210,8 @@ router.get('/:shop_id', function (req, res, next) {
 
     function selectShopPickJJimStatus(shopPickResults, cb) {
       var shop_customer_jjim_sql = "select customer_id, shop_id " +
-        "from jjim_shops " +
-        "where customer_id =? and shop_id =? ";
+      "                             from jjim_shops " +
+      "                             where customer_id =? and shop_id =? ";
       connection.query(shop_customer_jjim_sql, [userId, shop_id], function (err, customerJJimResult) {
         if (err) {
           cb(err);
