@@ -31,8 +31,6 @@ var options = {
     "cert": cert
 };
 
-debug("key : "+key);
-debug("cert : "+cert);
 
 var server = http.createServer(app);
 var secureServer = https.createServer(options, app);
