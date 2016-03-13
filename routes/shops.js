@@ -46,19 +46,19 @@ router.post('/', function (req, res, next) {
         "                           on(pd.from_id = s.id) ";
       pageArr = [listPerPage, (page - 1) * listPerPage];
     } else {
-      var shop_sql = "select s.id as shop_id, s.name as shopName, "+
-      "                      ifnull(js.shop_jjim_counts,0) as shop_jjim_counts, pd.mainPhoto, "+
-      "                      ifnull(round(6371 * acos(cos(radians(?)) * cos(radians(y(s.loc_point))) * cos(radians(x(s.loc_point)) - radians(?)) "+
-      "                     + sin(radians(?)) * sin(radians(y(s.loc_point)))), 2), 0) AS distance "+
-      "               from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts "+
-      "                                      from jjim_shops "+
-      "                                      group by shop_id)js "+
-      "                           on (js.shop_id = s.id) "+
-      "                           left join (select from_id, path as mainPhoto "+
-      "                                      from photo_datas "+
-      "                                      where from_type = 1 "+
-      "                                      group by from_id) pd " +
-      "                           on(pd.from_id = s.id)";
+      var shop_sql = "select s.id as shop_id, s.name as shopName, " +
+        "                      ifnull(js.shop_jjim_counts,0) as shop_jjim_counts, pd.mainPhoto, " +
+        "                      round(6371 * acos(cos(radians(?)) * cos(radians(y(s.loc_point))) * cos(radians(x(s.loc_point)) - radians(?)) " +
+        "                     + sin(radians(?)) * sin(radians(y(s.loc_point)))), 2) AS distance " +
+        "               from shop s left join (select shop_id, count(customer_id) as shop_jjim_counts " +
+        "                                      from jjim_shops " +
+        "                                      group by shop_id)js " +
+        "                           on (js.shop_id = s.id) " +
+        "                           left join (select from_id, path as mainPhoto " +
+        "                                      from photo_datas " +
+        "                                      where from_type = 1 " +
+        "                                      group by from_id) pd " +
+        "                           on(pd.from_id = s.id) ";
       pageArr = [userLatitude, userLongitude, userLatitude, listPerPage, (page - 1) * listPerPage];
     }
     if (search != undefined) {
@@ -66,8 +66,15 @@ router.post('/', function (req, res, next) {
       shop_sql += finding
     }
     if (condition === '추천순') {
-      var referrals = " order by shop_jjim_counts desc"; // 추천순
+      var referrals = " order by shop_jjim_counts desc "; // 추천순
       shop_sql += referrals;
+    }
+    else if (condition === '거리순') {
+      var orderDistance = "round(6371 * acos(cos(radians(?)) * cos(radians(y(s.loc_point))) * cos(radians(x(s.loc_point)) - radians(?)) " +
+        "                  + sin(radians(?)) * sin(radians(y(s.loc_point)))), 2)";
+      var referrals = "order by " + orderDistance + " desc "; // 거리순
+      shop_sql += referrals;
+      pageArr = [userLatitude, userLongitude, userLatitude, userLatitude, userLongitude, userLatitude, listPerPage, (page - 1) * listPerPage];
     }
     shop_sql += " LIMIT ? OFFSET ?";
 
@@ -131,9 +138,9 @@ router.get('/:shop_id', function (req, res, next) {
 
     function selectShopPick(cb) {
       var shop_pick_sql = "select s.id as shop_id ,s.name as shopName, s.address,s.longitude, " +
-        "s.latitude, s.callnumber, s.usetime " +
-        "from shop s " +
-        "where s.id=? ";
+        "                         s.latitude, s.callnumber, s.usetime " +
+        "                  from shop s " +
+        "                  where s.id=? ";
       connection.query(shop_pick_sql, [shop_id], function (err, shopPickResults) {
         if (err) {
           cb(err);
@@ -149,8 +156,8 @@ router.get('/:shop_id', function (req, res, next) {
 
     function selectShopPickPhoto(shopPickResults, cb) {
       var shop_pick_photo_sql = "select pd.path as photoURL " +
-        "from photo_datas pd " +
-        "where pd.from_type = 1 and pd.from_id =?";
+        "                        from photo_datas pd " +
+        "                        where pd.from_type = 1 and pd.from_id =?";
       connection.query(shop_pick_photo_sql, shop_id, function (err, shopPhotoResults) {
         if (err) {
           cb(err);
@@ -179,17 +186,17 @@ router.get('/:shop_id', function (req, res, next) {
     function selectShopPickArtists(shopPickResults, cb) {
 
       var shop_pick_artists_sql = "select a.id as artist_id, a.nickname as artistNickname, ifnull(ja.artist_jjim_counts, 0) as artistjjim_counts, " +
-        "a.intro , pd.path as artistProfilePhoto " +
-        "from artist a left join(select artist_id, count(customer_id) as artist_jjim_counts " +
-        "from jjim_artists " +
-        "group by artist_id) ja " +
-        "on (ja.artist_id = a.id) " +
-        "left join (select from_id, path " +
-        "from photo_datas " +
-        "where from_type = 2 " +
-        "group by from_id) pd " +
-        "on (pd.from_id = a.id)" +
-        "where a.shop_id = ?";
+        "                                 a.intro , pd.path as artistProfilePhoto " +
+        "                          from artist a left join(select artist_id, count(customer_id) as artist_jjim_counts " +
+        "                                                  from jjim_artists " +
+        "                                                  group by artist_id) ja " +
+        "                                        on (ja.artist_id = a.id) " +
+        "                                        left join (select from_id, path " +
+        "                                                   from photo_datas " +
+        "                                                   where from_type = 2 " +
+        "                                                   group by from_id) pd " +
+        "                                        on (pd.from_id = a.id)" +
+        "                          where a.shop_id = ?";
 
       connection.query(shop_pick_artists_sql, shop_id, function (err, shopInArtistResults) {
         if (err) {
