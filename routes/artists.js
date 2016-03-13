@@ -166,7 +166,7 @@ router.get('/', function (req, res, next) {
       "                             on (ja.artist_id = a.id) " +
       "                             left join (select from_id, path as mainPhoto " +
       "                                        from photo_datas " +
-      "                                        where from_type ='아티스트' " +
+      "                                        where from_type = 3 " +
       "                                        group by from_id) pd " +
       "                             on (a.id = pd.from_id) ";
 
@@ -245,7 +245,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                           a.discount, a.intro, a.shop_id, s.shopName, pd.path as artistProfilePhoto " +
         "                    from artist a left join (select from_id, path " +
         "                                             from photo_datas " +
-        "                                             where from_type ='프로필' " +
+        "                                             where from_type = 2 " +
         "                                             group by from_id) pd " +
         "                                  on (a.id = pd.from_id) " +
         "                                  left join (select id, name as shopName " +
@@ -268,7 +268,7 @@ router.get('/:artist_id', function (req, res, next) {
     function selectArtistPickPhoto(artist_pick_results, cb) {
       var artist_pick_photo_sql = "select path as photoURL " +
         "                          from photo_datas  " +
-        "                          where from_type ='아티스트' and from_id =?";
+        "                          where from_type = 3 and from_id =?";
 
       connection.query(artist_pick_photo_sql, artist_id, function (err, artist_photo_results) {
         if (err) {

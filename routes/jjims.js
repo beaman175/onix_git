@@ -39,7 +39,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
         "                                         on (js.shop_id = s.id) " +
         "                                         left join (select from_id, path as mainPhoto " +
         "                                                    from photo_datas " +
-        "                                                    where from_type ='샵' " +
+        "                                                    where from_type = 1 " +
         "                                                    group by from_id) pd " +
         "                                         on (pd.from_id = s.id) " +
         "                      where js.customer_id =? " +
@@ -51,7 +51,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
         "                                             on (a.id = ja.artist_id) " +
         "                                             left join (select from_id, path as mainPhoto " +
         "                                                        from photo_datas " +
-        "                                                        where from_type ='아티스트'" +
+        "                                                        where from_type = 3 " +
         "                                                        group by from_id) pd " +
         "                                             on (pd.from_id = a.id) " +
         "                        where ja.customer_id = ? " +

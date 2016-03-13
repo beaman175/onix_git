@@ -47,7 +47,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
         "                                    on (a.id= s.id) " +
         "                                    left join (select from_id, path " +
         "                                               from photo_datas " +
-        "                                               where from_type = '프로필'" +
+        "                                               where from_type = 2 " +
         "                                               group by from_id) pd " +
         "                                   on (pd.from_id = a.id) " +
         "                where sm.customer_id =?" +

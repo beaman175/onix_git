@@ -52,7 +52,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
       "                                    on (p.postboard_id = pbd.id) " +
       "                                    left join (select from_id, path " +
       "                                               from photo_datas " +
-      "                                               where from_type ='게시판' " +
+      "                                               where from_type = 4 " +
       "                                               group by from_id) pd " +
       "                                    on (p.id = pd.from_id) " +
       "                 where pbd.id = ? ";
@@ -235,7 +235,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
 
   function insertPost(connection, callback) {
     var insertPostSql = "insert into posts (postboard_id, writer_id, writer, title, content) values (?,?,?,?,?)";
-    var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,'게시판',?,?,?,?,?)";
+    var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,4,?,?,?,?,?)";
 
     var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
 
