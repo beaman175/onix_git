@@ -11,32 +11,9 @@ var nodeschedule = require('node-schedule');
 global.pool = require('./config/dbpool');
 require('./config/passportconfig')(passport);
 
-
-/*
-
 var winston = require('winston');
-var config  = {
-  transports : [
-    new winston.transports.Console({
-      level : 'error'
-
-    }), new winston.transports.File({
-      level : 'debug', // 우선순위 젤 높음
-      filename : 'app.log'
-    })
-  ]
-};
-
-
-var loggerr = new winston.Logger(config);
-loggerr.log('debug','debug message');
-loggerr.log('info','info message');
-
-//가장 중요한 로그 둘
-loggerr.log('warn','warn message');
-loggerr.log('error','error message');
-
-*/
+var winstonconfig = require('./config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
 
 
 // loading router-level-middleware modules
@@ -65,16 +42,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(session({
-  //"secret": process.env.SERVER_KEY,// 원래는 이렇게 잡아야한다....
-  "secret": "GCDjbIY9JsF4XSI/005Qa+SsHZQS6zxPeUmSHOHKoOA=", // 서버만 가지고 있는 정보 (openssl)
+  "secret": process.env.FMS_SERVER_KEY,// 원래는 이렇게 잡아야한다....
   "cookie": {"maxAge": 86400000}, //유지기간 60*60*24*365*1000  = 1년
   "resave": true,
-  "saveUnitalized": true
+  "saveUninitialized": true //초기화 되지 않은상태여도 저장
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+//0시마다 스케줄링
 app.use(function (req, res, next) {
   var deleteSalemsgSql = "delete FROM salepushmsg";
   var updateDiscountSql = "update artist set discount = 0 ";
@@ -86,6 +65,7 @@ app.use(function (req, res, next) {
         async.series([function (cb) {
           connection.query(deleteSalemsgSql, function (err) {
             if (err) {
+              logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
               cb(err);
             } else {
               cb(null);
@@ -94,20 +74,23 @@ app.use(function (req, res, next) {
         }, function (cb) {
           connection.query(updateDiscountSql, function (err) {
             if (err) {
+              logging.log('error', '스케줄링 discount 업데이트 에러');
               cb(err);
             } else {
               cb(null);
             }
           });
         }], function (err) {
-            if(err){
-              next(err);
-            }else {
-              next();
-            }
+          if (err) {
+            next(err);
+          } else {
+            logging.log('info', '스케줄링이 정상적으로 동작!');
+            next();
+          }
         });
       });
     });
+    logging.log('info', '스케줄링이 정상적으로 동작!');
     next();
   } else {
     next();
@@ -136,8 +119,7 @@ app.use(function (req, res, next) {
 if (app.get('env') === 'development') {
   app.use(function (err, req, res, next) {
     res.status(err.status || 500);
-    //res.render('error', {
-    //에러가 발생하면 json으로 출력
+    logging.log('error', err);
     res.json('error', {
       message: err.message,
       error: err
@@ -151,6 +133,7 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   //res.render('error', {
   //에러가 발생하면 json으로 출력
+  logging.log('error', err);
   res.json('error', {
     "failResult": {
       err_code: err.statusCode,

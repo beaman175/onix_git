@@ -24,7 +24,7 @@ router.post('/logout', function (req, res, next) {
   });
 });
 
-router.get('/me', isLoggedIn, function (req, res, next) {
+/*router.get('/me', isLoggedIn, function (req, res, next) {
   if (req.secure) {
     var user = req.user;
     var result = {
@@ -41,7 +41,7 @@ router.get('/me', isLoggedIn, function (req, res, next) {
     err.status = 426;
     next(err);
   }
-});
+});*/
 
 //4.로컬 로그인
 router.post('/local', function (req, res, next) {
