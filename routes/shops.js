@@ -9,7 +9,7 @@ router.post('/', function (req, res, next) {
 
   var listPerPage = 10;
 
-  var condition = req.body.condition; //거리순, 추천순
+  var condition = parseInt(req.body.condition); //추천순(1), 거리순(2)
   var search = req.body.search; // 검색
 
   var userLatitude = parseFloat(req.body.userLatitude); //사용자 현위치 위도
@@ -64,11 +64,11 @@ router.post('/', function (req, res, next) {
       var finding = "where s.name like " + '"%' + search + '%"';
       shop_sql += finding
     }
-    if (condition === '추천순') {
+    if (condition === 1 ) {
       var referrals = " order by shop_jjim_counts desc "; // 추천순
       shop_sql += referrals;
     }
-    else if (condition === '거리순') {
+    else if (condition === 2 ) {
       var orderDistance = "round(6371 * acos(cos(radians(?)) * cos(radians(y(s.loc_point))) * cos(radians(x(s.loc_point)) - radians(?)) " +
         "                  + sin(radians(?)) * sin(radians(y(s.loc_point)))), 2)";
       var referrals = "order by " + orderDistance + " desc "; // 거리순

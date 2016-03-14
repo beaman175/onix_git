@@ -134,7 +134,7 @@ router.get('/', function (req, res, next) {
 
   var listPerPage = 10;
 
-  var condition = req.query.condition; //거리순, 추천순
+  var condition = parseInt(req.query.condition); //추천순(1), 할인순(2)
   var search = req.query.search; // 검색
 
   var idx = 0;
@@ -173,10 +173,10 @@ router.get('/', function (req, res, next) {
     if (search != undefined) {
       var finding = "where a.nickname like " + '"%' + search + '%"';
       artist_sql += finding;
-    } else if (condition === '추천순') {
+    } else if (condition === 1) {
       var referrals = " order by artist_jjim_counts desc"; // 추천순
       artist_sql += referrals;
-    } else if (condition === '할인순') {
+    } else if (condition === 2) {
       var referrals = " order by a.discount desc"; // 할인순
       artist_sql += referrals;
     }
