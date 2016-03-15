@@ -5,6 +5,8 @@ var async = require('async');
 var hexkey = process.env.FMS_SERVER_KEY;
 var authConfig = require('./authconfig');
 
+
+
 module.exports = function (passport) {
 
   passport.serializeUser(function (user, done) {

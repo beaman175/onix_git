@@ -79,6 +79,7 @@ router.post('/facebook', function (req, res, next) {
             error.statusCode = -105;
             next(error);
           } else {
+            logging.log('info','페이스북 연동 성공!');
             var result = {
               "successResult": {
                 "message": "페이스북 로그인이 정상적으로 되었습니다."
