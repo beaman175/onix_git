@@ -75,10 +75,10 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     });
   }
 
-  //사진과 댓글을 불러온다
-  function selectBoardsComments(connection, board_results, callback) {
+  //댓글을 불러온다
+  function selectBoardsReplies(connection, board_results, callback) {
     idx = 0;
-    var boards_comments = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
+    var boards_replies = "select writer_id, writer, date_format(convert_tz(register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') " +
       "                           as register_date, content " +
       "                    from reply  " +
       "                    where posts_id = ?  " +
@@ -86,7 +86,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
     async.eachSeries(board_results, function (item, cb) {
 
-      connection.query(boards_comments, item.post_id, function (err, board_replies_results) {
+      connection.query(boards_replies, item.post_id, function (err, board_replies_results) {
         if (err) {
           cb2(err);
         } else {
