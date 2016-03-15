@@ -60,6 +60,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
       async.waterfall([function (cb) {
         connection.query(selectShopJJimSql, pageArr, function (err, jjimShopResults) {
           if (err) {
+            connection.release();
             cb(err);
           } else {
             cb(null, jjimShopResults);
@@ -133,7 +134,7 @@ router.post('/:target_id/plus', isLoggedIn, function (req, res, next) {
       } else {
         var jjim_sql = "insert into jjim_shops(customer_id, shop_id) values (?,?)";
       }
-      connection.query(jjim_sql, [userId, target_id], function (err, jjimResult) {
+      connection.query(jjim_sql, [userId, target_id], function (err) {
         connection.release();
         if (err) {
           callback(err);
@@ -186,7 +187,7 @@ router.delete('/:target_id/minus', isLoggedIn, function (req, res, next) {
       } else {
         var jjim_sql = "delete from jjim_shops where customer_id=? and shop_id=? ";
       }
-      connection.query(jjim_sql, [userId, target_id], function (err, jjimResult) {
+      connection.query(jjim_sql, [userId, target_id], function (err) {
         connection.release();
         if (err) {
           callback(err);

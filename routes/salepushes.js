@@ -160,53 +160,59 @@ router.post('/', isLoggedIn, function (req, res, next) {
 
       connection.query(jjimTokenSql, artist.id, function (err, tokenResults) {
         if (err) {
+          connection.release();
           callback(err);
         } else {
           var regTokens = [];
           connection.beginTransaction(function (err) {
-            async.each(tokenResults, function (item, cb) {
-              var insertSaleMsgSql = "insert into salepushmsg (validdate, customer_id, artist_id) " +
-                "                     values(?,?,?)";
-              connection.query(insertSaleMsgSql, [validdate, item.customer_id, artist.id], function (err) {
+            if(err){
+              connection.release();
+              callback(err);
+            }else{
+              async.each(tokenResults, function (item, cb) {
+                var insertSaleMsgSql = "insert into salepushmsg (validdate, customer_id, artist_id) " +
+                  "                     values(?,?,?)";
+                connection.query(insertSaleMsgSql, [validdate, item.customer_id, artist.id], function (err) {
+                  if (err) {
+                    connection.rollback();
+                    connection.release();
+                    cb(err);
+                  } else {
+                    regTokens.push(item.registration_token);
+                    cb(null);
+                  }
+                });
+              }, function (err) {
                 if (err) {
                   connection.rollback();
                   connection.release();
-                  cb(err);
+                  callback(err);
                 } else {
-                  regTokens.push(item.registration_token);
-                  cb(null);
+                  var updateDiscountSql = "update artist set discount = ? "+
+                    "where id = ? ";
+                  connection.query(updateDiscountSql, [discount, artist.id], function (err) {
+                    if(err) {
+                      connection.rollback();
+                      connection.release();
+                      callback(err);
+                    } else {
+                      var sender = new gcm.Sender(authConfig.gcm.server_access_key);
+                      sender.send(message, regTokens, function (err) {
+                        if (err) {
+                          connection.rollback();
+                          connection.release();
+                          callback(err);
+                        } else {
+                          connection.commit();
+                          connection.release();
+                          callback(null);
+                        }
+                      });
+                    }
+                  });
                 }
               });
-            }, function (err) {
-              if (err) {
-                connection.rollback();
-                connection.release();
-                callback(err);
-              } else {
-                var updateDiscountSql = "update artist set discount = ? "+
-                                        "where id = ? ";
-                connection.query(updateDiscountSql, [discount, artist.id], function (err) {
-                  if(err) {
-                    connection.rollback();
-                    connection.release();
-                    callback(err);
-                  } else {
-                    var sender = new gcm.Sender(authConfig.gcm.server_access_key);
-                    sender.send(message, regTokens, function (err) {
-                      if (err) {
-                        connection.rollback();
-                        connection.release();
-                        callback(err);
-                      } else {
-                        connection.commit();
-                        connection.release();
-                        callback(null);
-                      }
-                    });
-                  }
-                });
-              }
-            });
+            }
           });
         }
       });

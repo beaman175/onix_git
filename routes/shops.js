@@ -142,9 +142,11 @@ router.get('/:shop_id', function (req, res, next) {
         "                  where s.id=? ";
       connection.query(shop_pick_sql, [shop_id], function (err, shopPickResults) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           if (shopPickResults.length === 0) {
+            connection.release();
             cb(new Error('해당 샵은 존재하지 않습니다'));
           } else {
             cb(null, shopPickResults);
@@ -159,6 +161,7 @@ router.get('/:shop_id', function (req, res, next) {
         "                        where pd.from_type = 1 and pd.from_id =?";
       connection.query(shop_pick_photo_sql, shop_id, function (err, shopPhotoResults) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           if (shopPhotoResults.length) {
@@ -168,6 +171,7 @@ router.get('/:shop_id', function (req, res, next) {
               cb2(null);
             }, function (err) {
               if (err) {
+                connection.release();
                 cb(err);
               } else {
                 shopPickResults.photoURL = shop_photo_URL;
@@ -199,6 +203,7 @@ router.get('/:shop_id', function (req, res, next) {
 
       connection.query(shop_pick_artists_sql, shop_id, function (err, shopInArtistResults) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           shopPickResults.attArtists = shopInArtistResults;
@@ -212,6 +217,7 @@ router.get('/:shop_id', function (req, res, next) {
         "                           from jjim_shops " +
         "                           where customer_id =? and shop_id =? ";
       connection.query(shop_customer_jjim_sql, [userId, shop_id], function (err, customerJJimResult) {
+        connection.release();
         if (err) {
           cb(err);
         } else {

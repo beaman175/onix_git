@@ -254,6 +254,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                    where a.id = ?";
       connection.query(artist_pick_sql, [artist_id], function (err, artist_pick_results) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           if (artist_pick_results.length === 0) {
@@ -272,6 +273,7 @@ router.get('/:artist_id', function (req, res, next) {
 
       connection.query(artist_pick_photo_sql, artist_id, function (err, artist_photo_results) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           var artist_photo_URL = [];
@@ -280,6 +282,7 @@ router.get('/:artist_id', function (req, res, next) {
             cb2(null);
           }, function (err) {
             if (err) {
+              connection.release();
               cb(err);
             } else {
               artist_pick_results.artistPhotos = artist_photo_URL;
@@ -299,6 +302,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                             where a.id = ?";
       connection.query(artsit_pick_services_sql, artist_id, function (err, artist_services_results) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           artist_pick_results.services = artist_services_results;
@@ -315,6 +319,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                         limit 10 offset 0";
       connection.query(artist_pick_comments, artist_id, function (err, artist_comments_results) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           artist_pick_results.comments = artist_comments_results;
@@ -329,6 +334,7 @@ router.get('/:artist_id', function (req, res, next) {
         "                                    where customer_id =? and artist_id =?";
       connection.query(artist_customer_jjim_status_sql, [userId, artist_id], function (err, artist_comments_results) {
         if (err) {
+          connection.release();
           cb(err);
         } else {
           artist_pick_results[0].jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
@@ -339,10 +345,11 @@ router.get('/:artist_id', function (req, res, next) {
 
     async.waterfall([selectArtistPick, selectArtistPickPhoto, selectArtistPickService, selectArtistPickComments, selectArtistPickJJimStatus],
       function (err, artist_pick_results) {
+        connection.release();
         if (err) {
           callback(err);
         } else {
-          connection.release();
+
           callback(null, artist_pick_results);
         }
       });
@@ -464,6 +471,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
         "                     values(?,?,?,?);";
 
       connection.query(insertCommentSql, writeInfo, function (err) {
+        connection.release();
         if (err) {
           var err = new Error('한줄평 쓰기에 실패했습니다.');
           err.statusCode = -116;

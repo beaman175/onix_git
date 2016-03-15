@@ -31,8 +31,6 @@ module.exports = function (passport) {
             "        from customer " +
             "        where id = ?";
         }
-
-
         connection.query(sql, [user.id], function (err, results) {
           connection.release(); //주의!!!
           if (err) {
@@ -78,17 +76,19 @@ module.exports = function (passport) {
           "        FROM artist " +
           "        WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
       } else {
+        connection.release();
         var err = new Error("사용자가 존재하지 않습니다...");
         err.statusCode = -104;
         callback(err);
       }
 
       connection.query(sql, function (err, results) {
-
         if (err) {
+          connection.release();
           callback(err);
         } else {
           if (results.length === 0) {
+            connection.release();
             var err = new Error('사용자가 존재하지 않습니다...');
             err.statusCode = -104;
             callback(err); // callback(null, false)로 해도 됨
@@ -107,6 +107,7 @@ module.exports = function (passport) {
     function compareUserInput(user, connection, callback) {
       bcrypt.compare(password, user.hashPassword, function (err, result) { // 해시 전 패스워드 다음에 해시 후 패스워드가 와야 한다. 순서 중요
         if (err) {
+          connection.release();
           callback(err);
         } else {
           if (result) { //true
@@ -123,9 +124,11 @@ module.exports = function (passport) {
                 }
               });
             } else {
+              connection.release();
               callback(null, user);
             }
           } else { //false
+            connection.release();
             callback(null, false); //비밀번호가 틀렸을 때
           }
         }
@@ -182,7 +185,6 @@ module.exports = function (passport) {
                 connection.release();
                 callback(err);
               } else {
-                connection.release();
                 var user = {
                   "id": result.insertId,
                   "email_id": profile.emails[0].value,

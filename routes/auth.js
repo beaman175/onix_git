@@ -24,24 +24,6 @@ router.post('/logout', function (req, res, next) {
   });
 });
 
-/*router.get('/me', isLoggedIn, function (req, res, next) {
-  if (req.secure) {
-    var user = req.user;
-    var result = {
-      "successResult": {
-        "message": "내정보를 불러왔습니다",
-        "id": user.id,
-        "email_id": user.email_id,
-        "nickname": user.nickname
-      }
-    };
-    res.json(result);
-  } else {
-    var err = new Error('SSL/TLS Upgrade Required');
-    err.status = 426;
-    next(err);
-  }
-});*/
 
 //4.로컬 로그인
 router.post('/local', function (req, res, next) {

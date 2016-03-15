@@ -52,6 +52,7 @@ router.post('/', function(req, res, next) {
             var rounds = 10;
             bcrypt.genSalt(rounds, function (err, salt) {
                 if (err) {
+                    connection.release();
                     callback(err);
                 } else {
                     callback(null, salt, connection);
@@ -63,6 +64,7 @@ router.post('/', function(req, res, next) {
         function generateHashPassword(salt, connection, callback) {
             bcrypt.hash(password, salt, function (err, hashPassword) {
                 if (err) {
+                    connection.release();
                     callback(err);
                 } else {
                     callback(null, hashPassword, connection);

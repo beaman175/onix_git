@@ -68,6 +68,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
     connection.query(boards_sql, pageArr, function (err, board_results) {
       if (err) {
+        connection.release();
         callback(err);
       } else {
         callback(null, connection, board_results);
@@ -88,6 +89,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
       connection.query(boards_replies, item.post_id, function (err, board_replies_results) {
         if (err) {
+          connection.release();
           cb2(err);
         } else {
           board_results[idx].replies = board_replies_results;
@@ -242,6 +244,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     if (req.headers['content-type'] === 'application/x-www-form-urlencoded') { // 사진을 올리지 않은 경우
       connection.query(insertPostSql, writeXform, function (err) {
         if (err) {
+          connection.release();
           callback(err);
         } else {
           callback(null);
@@ -257,69 +260,72 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       form.parse(req, function (err, fields, files) {
         var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
         connection.beginTransaction(function (err) {
+          if(err){
+            callback(err);
+          } else {
 
-          function insertPost(cb) {
-            connection.query(insertPostSql, writeNomalform, function (err, result) {
-              if (err) {
-                connection.rollback();
-                connection.release();
-                cb(err);
-              } else {
-                var resultId = result.insertId;
-                cb(null, resultId);
-              }
-            });
-          }
-
-          function insertPostPhoto(resultId, cb) {
-            var s3 = new AWS.S3({
-              "accessKeyId": s3Config.key,
-              "secretAccessKey": s3Config.secret,
-              "region": s3Config.region,
-              "params": {
-                "Bucket": s3Config.bucket,
-                "Key": s3Config.imageDir + "/" + path.basename(files.photo.path), // 목적지의 이름
-                "ACL": s3Config.imageACL,
-                "ContentType": mime.lookup(files.photo.path)
-              }
-            });
-
-            var body = fs.createReadStream(files.photo.path);
-            s3.upload({"Body": body}) //pipe역할
-              .send(function (err, data) {
+            function insertAticle(cb) {
+              connection.query(insertPostSql, writeNomalform, function (err, result) {
                 if (err) {
-                  s3.deleteObject();
                   connection.rollback();
                   connection.release();
-                  callback(err);
+                  cb(err);
                 } else {
-                  fs.unlink(files.photo.path, function () {
-                    var value = [resultId, files.photo.name, data.key.split('/')[1], files.photo.size, files.photo.type, data.Location];
-                    connection.query(insertPostPhotoSql, value, function (err) {
-                      if (err) {
-                        s3.deleteObject();
-                        connection.rollback();
-                        connection.release();
-                        cb(err);
-                      } else {
-                        cb(null);
-                      }
-                    });
-                  });
+                  var resultId = result.insertId;
+                  cb(null, resultId);
                 }
               });
-          }
-
-          async.waterfall([insertPost, insertPostPhoto], function (err) {
-            if (err) {
-              callback(err);
-            } else {
-              connection.commit();
-              connection.release();
-              callback(null);
             }
-          });
 
+            function insertPostPhoto(resultId, cb) {
+              var s3 = new AWS.S3({
+                "accessKeyId": s3Config.key,
+                "secretAccessKey": s3Config.secret,
+                "region": s3Config.region,
+                "params": {
+                  "Bucket": s3Config.bucket,
+                  "Key": s3Config.imageDir + "/" + path.basename(files.photo.path), // 목적지의 이름
+                  "ACL": s3Config.imageACL,
+                  "ContentType": mime.lookup(files.photo.path)
+                }
+              });
+
+              var body = fs.createReadStream(files.photo.path);
+              s3.upload({"Body": body}) //pipe역할
+                .send(function (err, data) {
+                  if (err) {
+                    s3.deleteObject();
+                    connection.rollback();
+                    connection.release();
+                    callback(err);
+                  } else {
+                    fs.unlink(files.photo.path, function () {
+                      var value = [resultId, files.photo.name, data.key.split('/')[1], files.photo.size, files.photo.type, data.Location];
+                      connection.query(insertPostPhotoSql, value, function (err) {
+                        if (err) {
+                          s3.deleteObject();
+                          connection.rollback();
+                          connection.release();
+                          cb(err);
+                        } else {
+                          cb(null);
+                        }
+                      });
+                    });
+                  }
+                });
+            }
+
+            async.waterfall([insertAticle, insertPostPhoto], function (err) {
+              if (err) {
+                callback(err);
+              } else {
+                connection.commit();
+                connection.release();
+                callback(null);
+              }
+            });
+          }
         });
       });
     }
