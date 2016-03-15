@@ -2,7 +2,9 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 var authConfig = require('../config/authconfig');
-
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
 
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -82,6 +84,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
         if (err) {
           callback(err);
         } else {
+          logging.log('info','할인정보 조회 완료!');
           var results = {
             "successResult": {
               "message": "할인 정보를 조회합니다.",

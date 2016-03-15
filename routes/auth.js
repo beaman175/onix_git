@@ -3,6 +3,9 @@ var router = express.Router();
 var bcrypt = require('bcrypt');
 var passport = require('passport');
 
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
 
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -43,6 +46,7 @@ router.post('/local', function (req, res, next) {
             error.statusCode = -104;
             next(error);
           } else {
+            logging.log('info', '로그인 성공!!');
             var result = {
               "successResult": {
                 "message": "로그인이 정상적으로 되었습니다."
