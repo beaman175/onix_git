@@ -141,7 +141,7 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
     });
   }
 
-  async.waterfall([getConnection, selectBoards, selectBoardsComments, resultJSON], function (err, results) {
+  async.waterfall([getConnection, selectBoards, selectBoardsReplies, resultJSON], function (err, results) {
     if (err) {
       var error = new Error('게시판의 글들을 조회 하지 못하였습니다.');
       error.statusCode = -117;
