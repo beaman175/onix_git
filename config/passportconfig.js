@@ -155,7 +155,6 @@ module.exports = function (passport) {
     "profileFields": ["id", "email"],
     passReqToCallback: true
   }, function (req, accessToken, refreshToken, profile, done) {
-
     function getConnection(callback) {
       pool.getConnection(function (err, connection) {
         if (err) {
