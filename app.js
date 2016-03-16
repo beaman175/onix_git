@@ -10,6 +10,7 @@ var moment = require('moment-timezone');
 var nodeschedule = require('node-schedule');
 global.pool = require('./config/dbpool');
 require('./config/passportconfig')(passport);
+var async = require('async');
 
 var winston = require('winston');
 var winstonconfig = require('./config/winstonconfig');
@@ -119,7 +120,6 @@ app.use(function (req, res, next) {
 if (app.get('env') === 'development') {
   app.use(function (err, req, res, next) {
     res.status(err.status || 500);
-    logging.log('error', err);
     res.json('error', {
       message: err.message,
       error: err
@@ -133,7 +133,6 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   //res.render('error', {
   //에러가 발생하면 json으로 출력
-  logging.log('error', err);
   res.json('error', {
     "failResult": {
       err_code: err.statusCode,

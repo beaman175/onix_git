@@ -2,6 +2,10 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
+
 //11.샵 목록 조회
 router.post('/', function (req, res, next) {
   var page = parseInt(req.body.page);

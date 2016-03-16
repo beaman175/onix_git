@@ -4,6 +4,10 @@ var async = require('async');
 var bcrypt = require('bcrypt');
 var hexkey = process.env.FMS_SERVER_KEY;
 
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
+
 //1.고객 로컬 회원 가입
 router.post('/', function(req, res, next) {
     if (req.secure) {
@@ -34,10 +38,11 @@ router.post('/', function(req, res, next) {
                     connection.release();
                     callback(err);
                 } else {
-                    if (results.length) { //그런사람 있음
+                    if (results.length !== 0) { //그런사람 있음
                         connection.release();
-                        var err = new Error('회원 가입 하지 못하였습니다');
+                        var err = new Error('아이디가 중복됩니다.');
                         err.statusCode = -101;
+                        logging.log('error','아이디가 중복됩니다.');
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -93,9 +98,7 @@ router.post('/', function(req, res, next) {
 
         async.waterfall([getConnection, selectCustomer, generateSalt, generateHashPassword, insertCustomer], function (err, result) {
             if (err) {
-                var error = new Error ('회원 가입 하지 못하였습니다');
-                error.statusCode =  -101;
-                next(error);
+                next(err);
             } else {
                 var result = {
                     "successResult": {
