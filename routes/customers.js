@@ -27,22 +27,23 @@ router.post('/', function(req, res, next) {
 
         function selectCustomer(connection, callback) {
             var sql = "select id " +
-              "from artist "+
-              "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))" +
-              "union all "+
-              "select id "+
-              "from customer "+
-              "WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
+              "        from artist "+
+              "        WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))" +
+              "        union all "+
+              "        select id "+
+              "        from customer "+
+              "        WHERE email_id = aes_encrypt(" + connection.escape(email_id) + ",unhex(" + connection.escape(hexkey) + "))";
             connection.query(sql, function (err, results) {
                 if (err) {
+                    logging.log('error','중복 확인 쿼리 에러');
                     connection.release();
                     callback(err);
                 } else {
                     if (results.length !== 0) { //그런사람 있음
+                        logging.log('error','아이디가 중복됩니다.');
                         connection.release();
                         var err = new Error('아이디가 중복됩니다.');
                         err.statusCode = -101;
-                        logging.log('error','아이디가 중복됩니다.');
                         callback(err);
                     } else {
                         callback(null, connection);
@@ -57,6 +58,7 @@ router.post('/', function(req, res, next) {
             var rounds = 10;
             bcrypt.genSalt(rounds, function (err, salt) {
                 if (err) {
+                    logging.log('error','Sale 에러');
                     connection.release();
                     callback(err);
                 } else {
@@ -69,6 +71,7 @@ router.post('/', function(req, res, next) {
         function generateHashPassword(salt, connection, callback) {
             bcrypt.hash(password, salt, function (err, hashPassword) {
                 if (err) {
+                    logging.log('error','Hash 에러');
                     connection.release();
                     callback(err);
                 } else {
@@ -81,22 +84,20 @@ router.post('/', function(req, res, next) {
         // 4. DB insert
         function insertCustomer(hashPassword, connection, callback) {
             var sql = "insert into customer (email_id, password) " +
-              "VALUES (aes_encrypt(" + connection.escape(email_id) + ", unhex(" + connection.escape(hexkey) + ")), " +
-               connection.escape(hashPassword) + ")";
+              "        VALUES (aes_encrypt(" + connection.escape(email_id) + ", unhex(" + connection.escape(hexkey) + ")), " +
+                              connection.escape(hashPassword) + ")";
 
             connection.query(sql, function (err, result) {
                 connection.release();
                 if (err) {
                     callback(err);
                 } else {
-                    callback(null, {
-                        "id": result.insertId
-                    });
+                    callback(null);
                 }
             });
         }
 
-        async.waterfall([getConnection, selectCustomer, generateSalt, generateHashPassword, insertCustomer], function (err, result) {
+        async.waterfall([getConnection, selectCustomer, generateSalt, generateHashPassword, insertCustomer], function (err) {
             if (err) {
                 next(err);
             } else {
