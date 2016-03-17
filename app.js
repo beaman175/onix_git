@@ -85,13 +85,12 @@ app.use(function (req, res, next) {
           if (err) {
             next(err);
           } else {
-            logging.log('info', '스케줄링이 정상적으로 동작!');
+            logging.log('info', '스케줄링 완료!!');
             next();
           }
         });
       });
     });
-    logging.log('info', '스케줄링이 정상적으로 동작!');
     next();
   } else {
     next();
