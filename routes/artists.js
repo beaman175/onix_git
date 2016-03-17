@@ -468,7 +468,7 @@ router.post('/:artist_id/comments', isLoggedIn, function (req, res, next) {
 
     function insertComment(connection, callback) {
       var insertCommentSql = "insert into artist_comments(writer_id, writer, content, artist_id) " +
-        "                     values(?,?,?,?);";
+        "                     values(?,?,?,?)";
 
       connection.query(insertCommentSql, writeInfo, function (err) {
         connection.release();

@@ -129,7 +129,7 @@ if (app.get('env') === 'development') {
 // production error handler
 // no stacktraces leaked to user
 app.use(function (err, req, res, next) {
-  res.status(err.status || 500);
+  res.status(err.statusCode || 500);
   //res.render('error', {
   //에러가 발생하면 json으로 출력
   logging.log('error', err.message);
