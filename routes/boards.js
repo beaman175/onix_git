@@ -264,6 +264,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
         var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
         connection.beginTransaction(function (err) {
           if(err){
+            connection.release();
             callback(err);
           } else {
 
@@ -311,6 +312,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
                           connection.release();
                           cb(err);
                         } else {
+                          connection.release();
                           cb(null);
                         }
                       });
@@ -323,8 +325,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
               if (err) {
                 callback(err);
               } else {
-                connection.commit();
-                connection.release();
                 callback(null);
               }
             });
