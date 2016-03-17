@@ -147,8 +147,6 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   async.waterfall([getConnection, selectBoards, selectBoardsReplies, resultJSON], function (err, results) {
     if (err) {
-      logging.log('error','게시판 글들을 조회하지 못하였습니다');
-
       var error = new Error('게시판의 글들을 조회 하지 못하였습니다.');
       error.statusCode = -117;
       next(error);
@@ -231,7 +229,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   } else {
     var writer = req.user.nickname;
   }
-
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
       if (err) {
@@ -246,7 +243,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   function insertPost(connection, callback) {
     var insertPostSql = "insert into posts (postboard_id, writer_id, writer, title, content) values (?,?,?,?,?)";
     var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,4,?,?,?,?,?)";
-
     var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
 
     if (req.headers['content-type'] === 'application/x-www-form-urlencoded') { // 사진을 올리지 않은 경우
@@ -264,7 +260,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       form.uploadDir = path.join(__dirname, '../uploads');
       form.keepExtensions = true;
       form.multiples = true;
-
       form.parse(req, function (err, fields, files) {
         var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
         connection.beginTransaction(function (err) {
@@ -345,6 +340,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       error.statusCode = -119;
       next(error);
     } else {
+      logging.log('info','글이 게시 되었습니다.')
       var result = {
         "successResult": {
           "message": "게시글이 정상적으로 게시되었습니다."
