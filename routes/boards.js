@@ -8,6 +8,10 @@ var s3Config = require('../config/s3config');
 var fs = require('fs');
 var mime = require('mime');
 
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
+
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
     var err = new Error('로그인 하셔야 됩니다...');
@@ -143,10 +147,13 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
 
   async.waterfall([getConnection, selectBoards, selectBoardsReplies, resultJSON], function (err, results) {
     if (err) {
+      logging.log('error','게시판 글들을 조회하지 못하였습니다');
+
       var error = new Error('게시판의 글들을 조회 하지 못하였습니다.');
       error.statusCode = -117;
       next(error);
     } else {
+      logging.log('info','해당 게시물들이 정상적으로 조회 되었습니다.');
       res.json(results);
     }
   });
@@ -208,6 +215,7 @@ router.get('/:postBoard_id/posts/:post_id/replies', function (req, res, next) {
       error.statusCode = -118;
       next(error);
     } else {
+      logging.log('info','해당 댓글들이 정상적으로 조회 되었습니다.');
       res.json(results);
     }
   });

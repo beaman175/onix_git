@@ -133,6 +133,7 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   //res.render('error', {
   //에러가 발생하면 json으로 출력
+  logging.log('error', err.message);
   res.json('error', {
     "failResult": {
       err_code: err.statusCode,
