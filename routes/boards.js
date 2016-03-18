@@ -50,7 +50,8 @@ router.get('/:postBoard_id/posts', function (req, res, next) {
   function selectBoards(connection, callback) {
     var boards_sql = "select pbd.id as board_id, pbd.name as boardName, p.id as post_id, p.writer_id, p.writer, " +
       "                        date_format(CONVERT_TZ(p.register_date, '+00:00', '+9:00'), '%Y-%m-%d %H:%i:%s') as register_date, " +
-      "                        pd.path as boardPhoto, p.title, p.content " +
+      "                        ifnull(pd.path, 'https://s3.ap-northeast-2.amazonaws.com/onixs3/onix_defaultimg/onixdefaultImg_20160318_115329284.png') as boardPhoto, " +
+      "                        p.title, p.content " +
       "                 from postboard pbd join (select id, postboard_id, writer_id, writer, register_date, title, content " +
       "                                          from posts) p " +
       "                                    on (p.postboard_id = pbd.id) " +
@@ -238,13 +239,12 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   } else {
     var writer = req.user.nickname;
   }
-
   logging.log('info', postBoard_id);
   logging.log('info', writer_id);
   logging.log('info', writer);
-  logging.log('info', req.body.title);
-  logging.log('info', req.body.content);
   logging.log('info', req.headers['content-type']);
+
+  console.log(req.headers['content-type']);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
@@ -260,12 +260,10 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   function insertPost(connection, callback) {
     var insertPostSql = "insert into posts (postboard_id, writer_id, writer, title, content) values (?,?,?,?,?)";
     var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,4,?,?,?,?,?)";
-    var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
-
 
     if (req.headers['content-type'] === 'application/x-www-form-urlencoded') { // 사진을 올리지 않은 경우
-
-      logging.log('info','글만 들어왔음');
+      var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
+      logging.log('info', '글만 들어왔음');
 
       connection.query(insertPostSql, writeXform, function (err) {
         connection.release();
@@ -277,82 +275,100 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       });
     }
     else {
-      logging.log('info','사진, 글 들어왔음');
+      logging.log('info', '사진, 글 들어왔음');
 
       var form = new formidable.IncomingForm();
+      logging.log('info', 'test1');
+
       form.uploadDir = path.join(__dirname, '../uploads');
       form.keepExtensions = true;
-      form.multiples = true;
+
+      logging.log('info', 'test2');
+
       form.parse(req, function (err, fields, files) {
-        var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
-        connection.beginTransaction(function (err) {
-          if (err) {
-            connection.release();
-            callback(err);
-          } else {
-            function insertAticle(cb) {
-              connection.query(insertPostSql, writeNomalform, function (err, result) {
-                if (err) {
-                  connection.rollback();
-                  connection.release();
-                  cb(err);
-                } else {
-                  var resultId = result.insertId;
-                  cb(null, resultId);
-                }
-              });
-            }
+        logging.log('info', 'test3');
 
-            function insertPostPhoto(resultId, cb) {
-              var s3 = new AWS.S3({
-                "accessKeyId": s3Config.key,
-                "secretAccessKey": s3Config.secret,
-                "region": s3Config.region,
-                "params": {
-                  "Bucket": s3Config.bucket,
-                  "Key": s3Config.imageDir + "/" + path.basename(files.photo.path), // 목적지의 이름
-                  "ACL": s3Config.imageACL,
-                  "ContentType": mime.lookup(files.photo.path)
-                }
-              });
+        if (err) {
+          callback(err);
+        } else {
+          var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
 
-              var body = fs.createReadStream(files.photo.path);
-              s3.upload({"Body": body}) //pipe역할
-                .send(function (err, data) {
+          logging.log('info', postBoard_id);
+          logging.log('info', writer_id);
+          logging.log('info', writer);
+          logging.log('info', fields['title']);
+          logging.log('info', fields['content']);
+          logging.log('info', files['photo']);
+
+          connection.beginTransaction(function (err) {
+            if (err) {
+              connection.release();
+              callback(err);
+            } else {
+              function insertAticle(cb) {
+                connection.query(insertPostSql, writeNomalform, function (err, result) {
                   if (err) {
-                    s3.deleteObject();
                     connection.rollback();
                     connection.release();
-                    callback(err);
+                    cb(err);
                   } else {
-                    fs.unlink(files.photo.path, function () {
-                      var value = [resultId, files.photo.name, data.key.split('/')[1], files.photo.size, files.photo.type, data.Location];
-                      connection.query(insertPostPhotoSql, value, function (err) {
-                        if (err) {
-                          s3.deleteObject();
-                          connection.rollback();
-                          connection.release();
-                          cb(err);
-                        } else {
-                          connection.commit();
-                          connection.release();
-                          cb(null);
-                        }
-                      });
-                    });
+                    var resultId = result.insertId;
+                    cb(null, resultId);
                   }
                 });
-            }
-
-            async.waterfall([insertAticle, insertPostPhoto], function (err) {
-              if (err) {
-                callback(err);
-              } else {
-                callback(null);
               }
-            });
-          }
-        });
+
+              function insertPostPhoto(resultId, cb) {
+                var s3 = new AWS.S3({
+                  "accessKeyId": s3Config.key,
+                  "secretAccessKey": s3Config.secret,
+                  "region": s3Config.region,
+                  "params": {
+                    "Bucket": s3Config.bucket,
+                    "Key": s3Config.imageDir + "/" + path.basename(files.photo.path), // 목적지의 이름
+                    "ACL": s3Config.imageACL,
+                    "ContentType": mime.lookup(files.photo.path)
+                  }
+                });
+
+                var body = fs.createReadStream(files.photo.path);
+                s3.upload({"Body": body}) //pipe역할
+                  .send(function (err, data) {
+                    if (err) {
+                      s3.deleteObject();
+                      connection.rollback();
+                      connection.release();
+                      callback(err);
+                    } else {
+                      fs.unlink(files.photo.path, function () {
+                        var value = [resultId, files.photo.name, data.key.split('/')[1], files.photo.size, files.photo.type, data.Location];
+                        connection.query(insertPostPhotoSql, value, function (err) {
+                          if (err) {
+                            s3.deleteObject();
+                            connection.rollback();
+                            connection.release();
+                            cb(err);
+                          } else {
+                            connection.commit();
+                            connection.release();
+                            cb(null);
+                          }
+                        });
+                      });
+                    }
+                  });
+              }
+
+              async.waterfall([insertAticle, insertPostPhoto], function (err) {
+                if (err) {
+                  callback(err);
+                } else {
+                  callback(null);
+                }
+              });
+            }
+          });
+        }
       });
     }
   }
