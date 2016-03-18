@@ -1,5 +1,8 @@
 var winston = require('winston');
 var DailyRoateFile = require('winston-daily-rotate-file');
+var moment = require('moment-timezone');
+
+var m = moment().tz('Asia/Seoul');
 
 var config = {
   transports: [
@@ -13,7 +16,7 @@ var config = {
       level: 'warn',
       dirname : './log/',
       filename: 'warn-',
-      datePattern: 'yyyy-MM-dd_HH.log', //시간당 로그를 찍는다
+      datePattern: m.format('YYYY-MM-DD_HH')+'.log', //시간당 로그를 찍는다
       json:false
     }),
     new DailyRoateFile({
@@ -21,8 +24,9 @@ var config = {
       level: 'debug',
       dirname : './log/',
       filename: 'debug-',
-      datePattern: 'yyyy-MM-dd_HH.log', //시간당 로그를 찍는다
+      datePattern: m.format('YYYY-MM-DD_HH')+'.log', //시간당 로그를 찍는다
       json:false
+      //datePattern: 'yyyy-MM-dd_HH.log', //시간당 로그를 찍는다
     })
   ]
 };

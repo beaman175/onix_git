@@ -239,6 +239,13 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     var writer = req.user.nickname;
   }
 
+  logging.log('info', postBoard_id);
+  logging.log('info', writer_id);
+  logging.log('info', writer);
+  logging.log('info', req.body.title);
+  logging.log('info', req.body.content);
+  logging.log('info', req.headers['content-type']);
+
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
       if (err) {
@@ -255,11 +262,11 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
     var insertPostPhotoSql = "insert into photo_datas (from_id, from_type, origin_name, photoname, size, file_type, path) values (?,4,?,?,?,?,?)";
     var writeXform = [postBoard_id, writer_id, writer, req.body.title, req.body.content];
 
-    logging.log('info', postBoard_id);
-    logging.log('info', req.body.title);
-    logging.log('info', req.body.content);
 
     if (req.headers['content-type'] === 'application/x-www-form-urlencoded') { // 사진을 올리지 않은 경우
+
+      logging.log('info','글만 들어왔음');
+
       connection.query(insertPostSql, writeXform, function (err) {
         connection.release();
         if (err) {
@@ -270,6 +277,8 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       });
     }
     else {
+      logging.log('info','사진, 글 들어왔음');
+
       var form = new formidable.IncomingForm();
       form.uploadDir = path.join(__dirname, '../uploads');
       form.keepExtensions = true;
@@ -356,7 +365,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       error.statusCode = -119;
       next(error);
     } else {
-      logging.log('info', '글이 게시 되었습니다.');
+      logging.log('info', '게시글이 정상적으로 게시 되었습니다.');
       var result = {
         "successResult": {
           "message": "게시글이 정상적으로 게시되었습니다."
