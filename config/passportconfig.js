@@ -5,6 +5,9 @@ var async = require('async');
 var hexkey = process.env.FMS_SERVER_KEY;
 var authConfig = require('./authconfig');
 
+var winston = require('winston');
+var winstonconfig = require('./winstonconfig');
+var logging = new winston.Logger(winstonconfig);
 
 
 module.exports = function (passport) {
@@ -153,8 +156,9 @@ module.exports = function (passport) {
     "clientID": authConfig.facebook.appId,
     "clientSecret": authConfig.facebook.appSecret,
     "profileFields": ["id", "email"],
-    passReqToCallback: true
+     passReqToCallback : true
   }, function (req, accessToken, refreshToken, profile, done) {
+
     function getConnection(callback) {
       pool.getConnection(function (err, connection) {
         if (err) {

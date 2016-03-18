@@ -27,7 +27,6 @@ router.post('/logout', function (req, res, next) {
   });
 });
 
-
 //4.로컬 로그인
 router.post('/local', function (req, res, next) {
   if (req.secure) { //req.protocol === "https" 즉 https로 통신하고 있는지 판별

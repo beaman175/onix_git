@@ -239,12 +239,7 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   } else {
     var writer = req.user.nickname;
   }
-  logging.log('info', postBoard_id);
-  logging.log('info', writer_id);
-  logging.log('info', writer);
-  logging.log('info', req.headers['content-type']);
-
-  console.log(req.headers['content-type']);
+  logging.log('info', 'content-type : '+ req.headers['content-type']);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
@@ -255,7 +250,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       }
     });
   }
-
 
   function insertPost(connection, callback) {
     var insertPostSql = "insert into posts (postboard_id, writer_id, writer, title, content) values (?,?,?,?,?)";
@@ -440,6 +434,5 @@ router.post('/:postBoard_id/posts/:post_id/replies', isLoggedIn, function (req, 
     }
   });
 });
-
 
 module.exports = router;
