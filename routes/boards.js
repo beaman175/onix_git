@@ -275,30 +275,14 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
       });
     }
     else {
-      logging.log('info', '사진, 글 들어왔음');
-
       var form = new formidable.IncomingForm();
-      logging.log('info', 'test1');
-
       form.uploadDir = path.join(__dirname, '../uploads');
       form.keepExtensions = true;
-
-      logging.log('info', 'test2');
-
       form.parse(req, function (err, fields, files) {
-        logging.log('info', 'test3');
-
         if (err) {
           callback(err);
         } else {
           var writeNomalform = [postBoard_id, writer_id, writer, fields['title'], fields['content']];
-
-          logging.log('info', postBoard_id);
-          logging.log('info', writer_id);
-          logging.log('info', writer);
-          logging.log('info', fields['title']);
-          logging.log('info', fields['content']);
-          logging.log('info', files['photo']);
 
           connection.beginTransaction(function (err) {
             if (err) {
@@ -376,7 +360,6 @@ router.post('/:postBoard_id/posts', isLoggedIn, function (req, res, next) {
   async.waterfall([getConnection, insertPost], function (err) {
     if (err) {
       logging.log('error', err);
-
       var error = new Error('글 게시에 실패했습니다.');
       error.statusCode = -119;
       next(error);
