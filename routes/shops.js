@@ -75,7 +75,7 @@ router.post('/', function (req, res, next) {
     else if (condition === 2 ) {
       var orderDistance = "round(6371 * acos(cos(radians(?)) * cos(radians(y(s.loc_point))) * cos(radians(x(s.loc_point)) - radians(?)) " +
         "                  + sin(radians(?)) * sin(radians(y(s.loc_point)))), 2)";
-      var referrals = "order by " + orderDistance + " desc "; // 거리순
+      var referrals = "order by " + orderDistance + " asc "; // 거리순
       shop_sql += referrals;
       pageArr = [userLatitude, userLongitude, userLatitude, userLatitude, userLongitude, userLatitude, listPerPage, (page - 1) * listPerPage];
     }
