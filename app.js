@@ -58,7 +58,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(function (req, res, next) {
   var deleteSalemsgSql = "delete FROM salepushmsg";
   var updateDiscountSql = "update artist set discount = 0 ";
-  var cronstyle = '0 0 0 * * * ';
+  var cronstyle = '0 0 * * * *';
 
 
   if (scheduleFlag) {
