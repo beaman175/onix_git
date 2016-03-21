@@ -159,6 +159,11 @@ module.exports = function (passport) {
      passReqToCallback : true
   }, function (req, accessToken, refreshToken, profile, done) {
 
+    logging.log('info', 'pushToken : '+req.body.registration_token);
+    logging.log('info', 'accessToken : '+accessToken);
+    logging.log('info', 'facebook_id : '+profile.id);
+    logging.log('info', 'facebook_email : '+profile.emails[0].value);
+
     function getConnection(callback) {
       pool.getConnection(function (err, connection) {
         if (err) {

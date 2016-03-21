@@ -64,47 +64,52 @@ app.use(function (req, res, next) {
   if (scheduleFlag) {
     scheduleFlag = false;
     nodeschedule.scheduleJob(cronstyle, function () {
+      logging.log('info', '스케줄링 시작!!');
       pool.getConnection(function (err, connection) {
-        connection.beginTransaction(function (err) {
-          if (err) {
-            logging.log('error', '스케줄링 Tx 오류');
-            next(err);
-          } else {
-            async.series([function (cb) {
-              connection.query(deleteSalemsgSql, function (err) {
+        if (err) {
+          logging.log('error', 'Connection 에러');
+          next(err);
+        } else {
+          connection.beginTransaction(function (err) {
+            if (err) {
+              logging.log('error', '스케줄링 Tx 오류');
+              next(err);
+            } else {
+              async.series([function (cb) {
+                connection.query(deleteSalemsgSql, function (err) {
+                  if (err) {
+                    connection.rollback();
+                    connection.relese();
+                    logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
+                    cb(err);
+                  } else {
+                    cb(null);
+                  }
+                });
+              }, function (cb) {
+                connection.query(updateDiscountSql, function (err) {
+                  if (err) {
+                    connection.rollback();
+                    connection.relese();
+                    logging.log('error', '스케줄링 discount 업데이트 에러');
+                    cb(err);
+                  } else {
+                    connection.commit();
+                    connection.relese();
+                    cb(null);
+                  }
+                });
+              }], function (err) {
                 if (err) {
-                  connection.rollback();
-                  connection.relese();
-                  logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
-                  cb(err);
+                  next(err);
                 } else {
-                  cb(null);
+                  logging.log('info', moment().format("YYYY-MM-DD HH:mm:ss"));
+                  logging.log('info', '스케줄링 완료!!');
                 }
               });
-            }, function (cb) {
-              connection.query(updateDiscountSql, function (err) {
-                if (err) {
-                  connection.rollback();
-                  connection.relese();
-                  logging.log('error', '스케줄링 discount 업데이트 에러');
-                  cb(err);
-                } else {
-                  connection.commit();
-                  connection.relese();
-                  cb(null);
-                }
-              });
-            }], function (err) {
-              if (err) {
-                next(err);
-              } else {
-                logging.log('info', moment().format("YYYY-MM-DD HH:mm:ss"));
-                logging.log('info', '스케줄링 완료!!');
-                next();
-              }
-            });
-          }
-        });
+            }
+          });
+        }
       });
     });
     next();
