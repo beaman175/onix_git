@@ -99,7 +99,7 @@ app.use(function (req, res, next) {
         if (err) {
           next(err);
         } else {
-          logging.log('info', moment().format("YYYY-MM-DD HH:mm:ss"));
+          logging.log('info', moment().tz('Asia/Seoul').format("YYYY-MM-DD HH:mm:ss"));
           logging.log('info', '스케줄링 완료!!');
           next();
         }
