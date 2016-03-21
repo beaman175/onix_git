@@ -2,6 +2,10 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 
+var winston = require('winston');
+var winstonconfig = require('./winstonconfig');
+var logging = new winston.Logger(winstonconfig);
+
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
     var err = new Error('로그인 하셔야 됩니다...');
@@ -145,6 +149,11 @@ router.get('/', function (req, res, next) {
     }
   }
 
+  logging.log('info','page : '+page);
+  logging.log('info','condition : '+condition);
+  logging.log('info','search : '+search);
+  logging.log('info','req.user.id : '+req.user.id);
+
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
       if (err) {
@@ -227,6 +236,8 @@ router.get('/:artist_id', function (req, res, next) {
       userId = req.user.id;
     }
   }
+  logging.log('info','artist_id : '+artist_id);
+  logging.log('info','userId : '+userId);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
