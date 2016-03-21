@@ -3,7 +3,7 @@ var router = express.Router();
 var async = require('async');
 
 var winston = require('winston');
-var winstonconfig = require('./winstonconfig');
+var winstonconfig = require('../config/winstonconfig');
 var logging = new winston.Logger(winstonconfig);
 
 function isLoggedIn(req, res, next) {
@@ -135,14 +135,11 @@ router.put('/me', isLoggedIn, function (req, res, next) {
 router.get('/', function (req, res, next) {
   var page = parseInt(req.query.page);
   page = isNaN(page) ? 1 : page; //타입검사 NaN은 타입을 비교 불가
-
   var listPerPage = 10;
-
   var condition = parseInt(req.query.condition); //추천순(1), 할인순(2)
   var search = req.query.search; // 검색
-
-  var idx = 0;
   var userId = 0;
+
   if (req.isAuthenticated()) {
     if (req.user.nickname === undefined) {
       userId = req.user.id;
@@ -152,7 +149,6 @@ router.get('/', function (req, res, next) {
   logging.log('info','page : '+page);
   logging.log('info','condition : '+condition);
   logging.log('info','search : '+search);
-  logging.log('info','req.user.id : '+req.user.id);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
@@ -237,7 +233,6 @@ router.get('/:artist_id', function (req, res, next) {
     }
   }
   logging.log('info','artist_id : '+artist_id);
-  logging.log('info','userId : '+userId);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {

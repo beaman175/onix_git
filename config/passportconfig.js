@@ -58,6 +58,10 @@ module.exports = function (passport) {
     passwordField: "password",
     passReqToCallback: true //false일 경우 다음 함수의 req를 받지 않는다.
   }, function (req, email_id, password, done) {
+
+    logging.log('info', 'email_id : '+email_id);
+    logging.log('info', 'pushToken : '+req.body.registration_token);
+
     function getConnection(callback) {
       //pool에서 connection 얻어오기.
       pool.getConnection(function (err, connection) {

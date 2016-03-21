@@ -11,6 +11,7 @@ var nodeschedule = require('node-schedule');
 global.pool = require('./config/dbpool');
 require('./config/passportconfig')(passport);
 var async = require('async');
+var flag = 0;
 
 var winston = require('winston');
 var winstonconfig = require('./config/winstonconfig');
@@ -26,7 +27,6 @@ var salepushes = require('./routes/salepushes');
 var shops = require('./routes/shops');
 var auth = require('./routes/auth');
 
-var scheduleFlag = true;
 
 var app = express();
 
@@ -56,64 +56,58 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //0시마다 스케줄링
 app.use(function (req, res, next) {
-  var deleteSalemsgSql = "delete FROM salepushmsg";
-  var updateDiscountSql = "update artist set discount = 0 ";
-  var cronstyle = '0 0 * * * *';
+  if (flag === 0) {
+    var cronstyle = '0 0 * * * *';
+    var job = nodeschedule.scheduleJob(cronstyle, function () {
+      function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+          if (err) {
+            callback(err);
+          } else {
+            callback(null, connection);
+          }
+        });
+      }
 
+      function deleteMsg(connection, callback) {
+        var deleteSalemsgSql = "delete FROM salepushmsg";
+        connection.query(deleteSalemsgSql, function (err) {
+          if (err) {
+            connection.release();
+            logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
+            callback(err);
+          } else {
+            callback(null, connection);
+          }
+        });
+      }
 
-  if (scheduleFlag) {
-    scheduleFlag = false;
-    nodeschedule.scheduleJob(cronstyle, function () {
-      logging.log('info', '스케줄링 시작!!');
-      pool.getConnection(function (err, connection) {
+      function updateDiscount(connection, callback) {
+        var updateDiscountSql = "update artist set discount = 0 ";
+        connection.query(updateDiscountSql, function (err) {
+          connection.release();
+          if (err) {
+            logging.log('error', '스케줄링 discount 업데이트 에러');
+            callback(err);
+          } else {
+            callback(null);
+          }
+        });
+      }
+
+      async.waterfall([getConnection, deleteMsg, updateDiscount], function (err) {
         if (err) {
-          logging.log('error', 'Connection 에러');
           next(err);
         } else {
-          connection.beginTransaction(function (err) {
-            if (err) {
-              logging.log('error', '스케줄링 Tx 오류');
-              next(err);
-            } else {
-              async.series([function (cb) {
-                connection.query(deleteSalemsgSql, function (err) {
-                  if (err) {
-                    connection.rollback();
-                    connection.relese();
-                    logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
-                    cb(err);
-                  } else {
-                    cb(null);
-                  }
-                });
-              }, function (cb) {
-                connection.query(updateDiscountSql, function (err) {
-                  if (err) {
-                    connection.rollback();
-                    connection.relese();
-                    logging.log('error', '스케줄링 discount 업데이트 에러');
-                    cb(err);
-                  } else {
-                    connection.commit();
-                    connection.relese();
-                    cb(null);
-                  }
-                });
-              }], function (err) {
-                if (err) {
-                  next(err);
-                } else {
-                  logging.log('info', moment().format("YYYY-MM-DD HH:mm:ss"));
-                  logging.log('info', '스케줄링 완료!!');
-                }
-              });
-            }
-          });
+          logging.log('info', moment().format("YYYY-MM-DD HH:mm:ss"));
+          logging.log('info', '스케줄링 완료!!');
+          next();
         }
       });
     });
+    flag = 1;
     next();
-  } else {
+  } else{
     next();
   }
 });

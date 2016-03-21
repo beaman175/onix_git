@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 var authConfig = require('../config/authconfig');
+var gcm = require('node-gcm');
+
 var winston = require('winston');
 var winstonconfig = require('../config/winstonconfig');
 var logging = new winston.Logger(winstonconfig);
@@ -84,7 +86,7 @@ router.get('/', isLoggedIn, function (req, res, next) {
         if (err) {
           callback(err);
         } else {
-          logging.log('info','할인정보 조회 완료!');
+          logging.log('info', '할인정보 조회 완료!');
           var results = {
             "successResult": {
               "message": "할인 정보를 조회합니다.",
@@ -122,18 +124,23 @@ router.post('/', isLoggedIn, function (req, res, next) {
     discount = isNaN(discount) ? 0 : discount;
 
     var validdate = req.body.validdate; //유효기간
-    var gcm = require('node-gcm');
-
     var artist = req.user;
+
     var content = '';
     content = content.concat(validdate, ' 까지 ', discount, '% 할인 진행 합니다!!');
+
+    logging.log('info', artist.id);
+    logging.log('info', artist.nickname);
+    logging.log('info', content);
 
     var message = new gcm.Message({
       collapseKey: 'demo',
       delayWhileIdle: true,
       timeToLive: 3,
       data: {
-        msgId: artist.id
+        msgId: artist.id,
+        title: artist.nickname,
+        body: content
       },
       notification: {
         "title": artist.nickname,
@@ -165,14 +172,19 @@ router.post('/', isLoggedIn, function (req, res, next) {
         if (err) {
           connection.release();
           callback(err);
-        } else {
+        } else if (tokenResults.length === 0) {
+          var error = new Error('해당 아티스트는 찜회원이 존재 하지 않습니다');
+          error.statusCode = -108;
+          callback(error);
+        }
+        else {
           var regTokens = [];
           connection.beginTransaction(function (err) {
-            if(err){
+            if (err) {
               connection.release();
               callback(err);
-            }else{
-              async.each(tokenResults, function (item, cb) {
+            } else {
+              async.eachSeries(tokenResults, function (item, cb) {
                 var insertSaleMsgSql = "insert into salepushmsg (validdate, customer_id, artist_id) " +
                   "                     values(?,?,?)";
                 connection.query(insertSaleMsgSql, [validdate, item.customer_id, artist.id], function (err) {
@@ -191,10 +203,10 @@ router.post('/', isLoggedIn, function (req, res, next) {
                   connection.release();
                   callback(err);
                 } else {
-                  var updateDiscountSql = "update artist set discount = ? "+
-                    "where id = ? ";
+                  var updateDiscountSql = "update artist set discount = ? " +
+                    "                      where id = ? ";
                   connection.query(updateDiscountSql, [discount, artist.id], function (err) {
-                    if(err) {
+                    if (err) {
                       connection.rollback();
                       connection.release();
                       callback(err);
@@ -227,7 +239,7 @@ router.post('/', isLoggedIn, function (req, res, next) {
         error.statusCode = -108;
         next(err);
       } else {
-        console.log(message);
+        logging.log('info', '할인 메시지 전송 완료!');
         var result = {
           "successResult": {
             "message": "할인 메시지를 전송하였습니다"
