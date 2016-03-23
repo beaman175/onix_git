@@ -339,8 +339,8 @@ router.get('/:artist_id', function (req, res, next) {
         "                                    from jjim_artists " +
         "                                    where customer_id =? and artist_id =?";
       connection.query(artist_customer_jjim_status_sql, [userId, artist_id], function (err, artist_comments_results) {
+        connection.release();
         if (err) {
-          connection.release();
           cb(err);
         } else {
           artist_pick_results[0].jjim_status = (artist_comments_results.length !== 0) ? 1 : 0;
@@ -351,11 +351,9 @@ router.get('/:artist_id', function (req, res, next) {
 
     async.waterfall([selectArtistPick, selectArtistPickPhoto, selectArtistPickService, selectArtistPickComments, selectArtistPickJJimStatus],
       function (err, artist_pick_results) {
-        connection.release();
         if (err) {
           callback(err);
         } else {
-
           callback(null, artist_pick_results);
         }
       });

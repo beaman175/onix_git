@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //0시마다 스케줄링
 app.use(function (req, res, next) {
   if (flag === 0) {
-    var cronstyle = '0 0 * * * *';
+    var cronstyle = '1 0 4 * * * *';
     var job = nodeschedule.scheduleJob(cronstyle, function () {
       function getConnection(callback) {
         pool.getConnection(function (err, connection) {
