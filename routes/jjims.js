@@ -2,6 +2,10 @@ var express = require('express');
 var router = express.Router();
 var async = require('async');
 
+var winston = require('winston');
+var winstonconfig = require('../config/winstonconfig');
+var logging = new winston.Logger(winstonconfig);
+
 function isLoggedIn(req, res, next) {
   if (!req.isAuthenticated()) {
     var err = new Error('로그인 하셔야 됩니다...');
@@ -91,6 +95,10 @@ router.get('/', isLoggedIn, function (req, res, next) {
         if (err) {
           callback(err);
         } else {
+          logging.log('info','찜목록을 조회합니다.');
+          logging.log('info', 'page : '+page);
+          logging.log('info', 'userId : '+userId);
+
           callback(null, results);
         }
       });

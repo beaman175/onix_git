@@ -54,7 +54,8 @@ router.get('/', isLoggedIn, function (req, res, next) {
         "                                               where from_type = 2 " +
         "                                               group by from_id) pd " +
         "                                   on (pd.from_id = a.id) " +
-        "                where sm.customer_id =?" +
+        "                where sm.customer_id =? " +
+        "                order by date_format(convert_tz(sm.register_date,'+00:00','+9:00'), '%Y-%m-%d %H:%i:%s') desc " +
         "                limit ? offset ? ";
       connection.query(salepushSql, [userId, listPerPage, (page - 1) * listPerPage], function (err, saleResults) {
         connection.release();
@@ -212,12 +213,15 @@ router.post('/', isLoggedIn, function (req, res, next) {
                       callback(err);
                     } else {
                       var sender = new gcm.Sender(authConfig.gcm.server_access_key);
+                      logging.log('info',sender);
                       sender.send(message, regTokens, function (err) {
                         if (err) {
+                          logging.log('error', err);
                           connection.rollback();
                           connection.release();
                           callback(err);
                         } else {
+                          logging.log('info','Sender 동작');
                           connection.commit();
                           connection.release();
                           callback(null);

@@ -44,7 +44,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(session({
   "secret": process.env.FMS_SERVER_KEY,// 원래는 이렇게 잡아야한다....
-  "cookie": {"maxAge": 86400000}, //유지기간 60*60*24*365*1000  = 1년
+  "cookie": {"maxAge": 31536000000}, //유지기간 60*60*24*365*1000  = 1년
   "resave": true,
   "saveUninitialized": true //초기화 되지 않은상태여도 저장
 }));
@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //0시마다 스케줄링
 app.use(function (req, res, next) {
   if (flag === 0) {
-    var cronstyle = '1 0 4 * * * *';
+    var cronstyle = '0 0 15 * * * *';
     var job = nodeschedule.scheduleJob(cronstyle, function () {
       function getConnection(callback) {
         pool.getConnection(function (err, connection) {
@@ -68,46 +68,66 @@ app.use(function (req, res, next) {
           }
         });
       }
-
-      function deleteMsg(connection, callback) {
-        var deleteSalemsgSql = "delete FROM salepushmsg";
-        connection.query(deleteSalemsgSql, function (err) {
+      function initalSaleMsg(connection, callback) {
+        connection.beginTransaction(function (err) {
           if (err) {
             connection.release();
-            logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
             callback(err);
-          } else {
-            callback(null, connection);
+          }
+          else {
+            function deleteMsg(cb) {
+              var deleteSalemsgSql = "delete FROM salepushmsg";
+              connection.query(deleteSalemsgSql, function (err) {
+                if (err) {
+                  connection.rollback();
+                  connection.release();
+                  logging.log('error', '스케줄링 세일 푸시 메시지 삭제 에러');
+                  cb(err);
+                } else {
+                  cb(null);
+                }
+              });
+            }
+
+            function updateDiscount(cb) {
+              var updateDiscountSql = "update artist set discount = 0 ";
+              connection.query(updateDiscountSql, function (err) {
+                if (err) {
+                  connection.rollback();
+                  connection.release();
+                  logging.log('error', '스케줄링 discount 업데이트 에러');
+                  cb(err);
+                } else {
+                  connection.commit();
+                  connection.release();
+                  cb(null);
+                }
+              });
+            }
+
+            async.series([deleteMsg, updateDiscount], function (err) {
+              if (err) {
+                callback(err);
+              } else {
+                callback(null);
+              }
+            });
           }
         });
       }
-
-      function updateDiscount(connection, callback) {
-        var updateDiscountSql = "update artist set discount = 0 ";
-        connection.query(updateDiscountSql, function (err) {
-          connection.release();
-          if (err) {
-            logging.log('error', '스케줄링 discount 업데이트 에러');
-            callback(err);
-          } else {
-            callback(null);
-          }
-        });
-      }
-
-      async.waterfall([getConnection, deleteMsg, updateDiscount], function (err) {
+      async.waterfall([getConnection, initalSaleMsg], function (err) {
         if (err) {
           next(err);
         } else {
           logging.log('info', moment().tz('Asia/Seoul').format("YYYY-MM-DD HH:mm:ss"));
           logging.log('info', '스케줄링 완료!!');
-          next();
         }
       });
     });
     flag = 1;
     next();
-  } else{
+  }
+  else {
     next();
   }
 });
