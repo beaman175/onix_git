@@ -128,7 +128,7 @@ router.post('/', isLoggedIn, function (req, res, next) {
     var artist = req.user;
 
     var content = '';
-    content = content.concat(validdate, ' 까지 ', discount, '% 할인 진행 합니다!!');
+    content = content.concat(validdate, ' ', discount, '% 할인 진행 합니다!!');
 
     logging.log('info', artist.id);
     logging.log('info', artist.nickname);
