@@ -19,53 +19,59 @@ function isLoggedIn(req, res, next) {
 //2. 아티스트 닉네임 조회
 router.get('/me', isLoggedIn, function (req, res, next) {
   if (req.secure) {
-    if (req.isAuthenticated()) {
+    if (req.user.nickname !== undefined) {
       var artist_id = req.user.id;
-    }
 
-    function getConnection(callback) {
-      pool.getConnection(function (err, connection) {
-        if (err) {
-          callback(err);
-        } else {
-          callback(null, connection);
-        }
-      });
-    }
-
-    function selectArtistNickname(connection, callback) {
-      var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname " +
-        "from artist " +
-        "where id = ? ";
-      connection.query(artistNicknamesql, artist_id, function (err, artistNicknameResult) {
-        connection.release();
-        if (err) {
-          callback(err);
-        } else {
-          callback(null, artistNicknameResult);
-        }
-      });
-    }
-
-    function resultJSON(artistNicknameResult, callback) {
-      var result = {
-        "successResult": {
-          "message": "닉네임이 정상적으로 조회 되었습니다",
-          "nickname": artistNicknameResult[0].nickname
-        }
-      };
-      callback(null, result);
-    }
-
-    async.waterfall([getConnection, selectArtistNickname, resultJSON], function (err, result) {
-      if (err) {
-        var err = new Error('닉네임 조회를 하지 못하였습니다.');
-        err.statusCode = -102;
-        next(err);
-      } else {
-        res.json(result);
+      function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+          if (err) {
+            callback(err);
+          } else {
+            callback(null, connection);
+          }
+        });
       }
-    });
+
+      function selectArtistNickname(connection, callback) {
+        var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname " +
+          "                      from artist " +
+          "                      where id = ? ";
+        connection.query(artistNicknamesql, artist_id, function (err, artistNicknameResult) {
+          connection.release();
+          if (err) {
+            callback(err);
+          } else {
+            callback(null, artistNicknameResult);
+          }
+        });
+      }
+
+      function resultJSON(artistNicknameResult, callback) {
+        var result = {
+          "successResult": {
+            "message": "닉네임이 정상적으로 조회 되었습니다",
+            "nickname": artistNicknameResult[0].nickname
+          }
+        };
+        callback(null, result);
+      }
+
+      async.waterfall([getConnection, selectArtistNickname, resultJSON], function (err, result) {
+        if (err) {
+          var err = new Error('닉네임 조회를 하지 못하였습니다.');
+          err.statusCode = -102;
+          next(err);
+        } else {
+          logging.log('info', '아티스트의 닉네임을 정상적으로 조회 되었습니다');
+          res.json(result);
+        }
+      });
+    }
+    else {
+      var err = new Error('고객은 닉네임을 조회 할 수 없습니다');
+      err.status = 426;
+      next(err);
+    }
   } else {
     var err = new Error('SSL/TLS Upgrade Required');
     err.status = 426;
@@ -75,54 +81,78 @@ router.get('/me', isLoggedIn, function (req, res, next) {
 
 //3.아티스트 닉네임 설정
 router.put('/me', isLoggedIn, function (req, res, next) {
-  if (req.seruce) {
-    if (req.isAuthenticated()) {
+  if (req.secure) {
+    if (req.user.nickname !== undefined) {
       var artist_id = req.user.id;
-    }
-    var nickname = req.body.nickname;
+      var nickname = req.body.nickname;
 
-    function getConnection(callback) {
-      pool.getConnection(function (err, connection) {
-        if (err) {
-          callback(err);
-        } else {
-          callback(null, connection);
-        }
-      });
-    }
-
-    function updateArtistNickname(connection, callback) {
-
-      var artistNicknamesql = "update artist set nickname = ? " +
-        "where id =?";
-      connection.query(artistNicknamesql, [nickname, artist_id], function (err, artistNicknameResult) {
-        connection.release();
-        if (err) {
-          callback(err);
-        } else {
-          if (artistNicknameResult.affectedRows === 0) {
+      function getConnection(callback) {
+        pool.getConnection(function (err, connection) {
+          if (err) {
             callback(err);
           } else {
-            var result = {
-              "successResult": {
-                "message": "닉네임이 정상적으로 등록 되었습니다"
-              }
-            };
-            callback(null, result);
+            callback(null, connection);
           }
+        });
+      }
+
+      function selectArtistNickname(connection, callback) {
+        var artistNicknamesql = "select ifnull(nickname, '닉네임이 아직 설정 되지 않았습니다') as nickname " +
+          "                      from artist " +
+          "                      where nickname = ? ";
+        connection.query(artistNicknamesql, nickname, function (err, artistNicknameResult) {
+          if (err) {
+            connection.release();
+            callback(err);
+          } else {
+            if (artistNicknameResult.length !== 0) {
+              var duplicateError = new Error('닉네임이 중복 됩니다');
+              duplicateError.statusCode = -103;
+              callback(duplicateError);
+            } else {
+              callback(null, connection);
+            }
+          }
+        });
+      }
+
+
+      function updateArtistNickname(connection, callback) {
+
+        var artistNicknamesql = "update artist set nickname = ? " +
+          "                      where id =?";
+        connection.query(artistNicknamesql, [nickname, artist_id], function (err, artistNicknameResult) {
+          connection.release();
+          if (err) {
+            callback(err);
+          } else {
+            if (artistNicknameResult.affectedRows === 0) {
+              callback(err);
+            } else {
+              logging.log('info', '닉네임이 정상적으로 변경 되었습니다');
+              var result = {
+                "successResult": {
+                  "message": "닉네임이 정상적으로 변경 되었습니다"
+                }
+              };
+              callback(null, result);
+            }
+          }
+        });
+      }
+
+      async.waterfall([getConnection, selectArtistNickname, updateArtistNickname], function (err, result) {
+        if (err) {
+          next(err);
+        } else {
+          res.json(result);
         }
       });
+    } else {
+      var err = new Error('고객은 닉네임을 수정 할 수 없습니다');
+      err.status = 426;
+      next(err);
     }
-
-    async.waterfall([getConnection, updateArtistNickname], function (err, result) {
-      if (err) {
-        var err = new Error('닉네임 설정을 하지 못하였습니다.');
-        err.statusCode = -103;
-        next(err);
-      } else {
-        res.json(result);
-      }
-    });
   } else {
     var err = new Error('SSL/TLS Upgrade Required');
     err.status = 426;
@@ -146,9 +176,9 @@ router.get('/', function (req, res, next) {
     }
   }
 
-  logging.log('info','page : '+page);
-  logging.log('info','condition : '+condition);
-  logging.log('info','search : '+search);
+  logging.log('info', 'page : ' + page);
+  logging.log('info', 'condition : ' + condition);
+  logging.log('info', 'search : ' + search);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
@@ -232,7 +262,7 @@ router.get('/:artist_id', function (req, res, next) {
       userId = req.user.id;
     }
   }
-  logging.log('info','artist_id : '+artist_id);
+  logging.log('info', 'artist_id : ' + artist_id);
 
   function getConnection(callback) {
     pool.getConnection(function (err, connection) {
